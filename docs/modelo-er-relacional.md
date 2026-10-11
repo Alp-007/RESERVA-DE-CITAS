@@ -1,6 +1,6 @@
 # Modelo ER y relacional
 
-La base de datos usa PostgreSQL en Supabase. Las claves primarias de negocio son UUID; `auth.users` pertenece a Supabase Auth. Los comprobantes se guardan en el bucket privado `comprobantes-pago` y la tabla `pagos` conserva su ruta.
+La base usa PostgreSQL en Supabase. Las cuentas y contraseñas las gestiona `auth.users`; el resto de tablas conserva únicamente datos funcionales. Ejecuta las migraciones `202610110001` y `202610110002`, en ese orden.
 
 ## Diagrama entidad-relación
 
@@ -12,8 +12,12 @@ erDiagram
     SERVICIOS ||--o{ CITAS : define
     CITAS ||--o{ PAGOS : recibe
     PERFILES ||--o{ PAGOS : envia
-    PERFILES o|--o{ PAGOS : revisa
     PAGOS ||--o{ HISTORIAL_PAGOS : registra
+    PERFILES ||--o{ HORARIOS_PROFESIONALES : dispone
+    PERFILES ||--o{ NOTIFICACIONES : recibe
+    PERFILES ||--o{ SOLICITUDES_CAMBIO_PROFESIONAL : solicita
+    CITAS ||--o{ HISTORIAL_CITAS : audita
+    CITAS ||--o| BONOS_CITA : compensa
 
     AUTH_USERS {
         uuid id PK
@@ -24,12 +28,20 @@ erDiagram
         text nombre_completo
         text tipo_usuario
         text rol
-        timestamptz creado_en
+        text tipo_documento
+        text numero_documento
+        date fecha_nacimiento
+        text telefono
+        text direccion
+        text horario_preferido
+        boolean estudiante_validado
+        boolean activo
+        uuid profesional_asignado_id FK
+        timestamptz consentimiento_datos_en
     }
     SERVICIOS {
         uuid id PK
         text nombre UK
-        text descripcion
         int duracion_minutos
         int precio_cop
         boolean activo
@@ -44,6 +56,7 @@ erDiagram
         int valor_cop
         text motivo
         text estado
+        timestamptz reprogramada_en
     }
     PAGOS {
         uuid id PK
@@ -52,9 +65,8 @@ erDiagram
         int monto_cop
         text estado
         text archivo_path
-        text ocr_referencia
+        text referencia_transaccion
         int ocr_monto_cop
-        timestamptz actualizado_en
     }
     HISTORIAL_PAGOS {
         bigint id PK
@@ -64,23 +76,60 @@ erDiagram
         uuid actor_id
         timestamptz ocurrido_en
     }
+    HORARIOS_PROFESIONALES {
+        uuid id PK
+        uuid profesional_id FK
+        int dia_semana
+        time hora_inicio
+        time hora_fin
+        boolean activo
+    }
+    CONFIGURACION_APORTES {
+        boolean id PK
+        int aporte_estudiante
+        int aporte_otros
+    }
+    HISTORIAL_CITAS {
+        bigint id PK
+        uuid cita_id FK
+        uuid usuario_id FK
+        timestamptz inicio_anterior
+        timestamptz inicio_nuevo
+        text estado_anterior
+        text estado_nuevo
+    }
+    SOLICITUDES_CAMBIO_PROFESIONAL {
+        uuid id PK
+        uuid usuario_id FK
+        text motivo
+        text estado
+        uuid revisado_por FK
+    }
+    BONOS_CITA {
+        uuid id PK
+        uuid cita_id FK
+        uuid usuario_id FK
+        int valor_cop
+        text motivo
+    }
+    NOTIFICACIONES {
+        bigint id PK
+        uuid usuario_id FK
+        text tipo
+        text mensaje
+        timestamptz leida_en
+    }
 ```
 
-## Modelo relacional
+## Relaciones y reglas
 
-- **PERFILES**(`id` PK/FK → `auth.users.id`, nombre_completo, tipo_usuario, rol, creado_en, actualizado_en). Un perfil por cuenta; el rol inicial se asigna en servidor como `usuario`.
-- **SERVICIOS**(`id` PK, nombre UQ, descripcion, duracion_minutos, precio_cop, activo, creado_en, actualizado_en). El precio empieza en cero y lo configura el administrador.
-- **CITAS**(`id` PK, `usuario_id` FK → PERFILES, `profesional_id` FK → PERFILES nullable, `servicio_id` FK → SERVICIOS, inicio, fin, valor_cop, motivo, estado, notas_administrativas, marcas de tiempo). `valor_cop` y duración se fijan desde SERVICIOS al crear la cita.
-- **PAGOS**(`id` PK, `cita_id` FK → CITAS, `usuario_id` FK → PERFILES, monto_cop, estado, archivo_path, datos OCR, revisado_por FK → PERFILES nullable, nota_revision, marcas de tiempo). La base calcula el monto desde la cita; el cliente no determina el valor final.
-- **HISTORIAL_PAGOS**(`id` PK, `pago_id` FK → PAGOS, estado_anterior, estado_nuevo, actor_id, nota, ocurrido_en). Se escribe mediante trigger cuando se crea o cambia el estado del pago.
-- **STORAGE `comprobantes-pago`**: bucket privado; `archivo_path` referencia el objeto. Solo el propietario y administradores pueden leerlo; solo el propietario puede cargarlo.
-
-## Cardinalidades y reglas
-
-- AUTH_USERS–PERFILES: 1 a 1.
-- PERFILES–CITAS (solicitante): 1 a N; la cita tiene un solo solicitante.
-- PERFILES–CITAS (profesional): 1 a N; la asignación puede estar vacía.
-- SERVICIOS–CITAS: 1 a N; el precio y duración quedan congelados en la cita.
-- CITAS–PAGOS: 1 a N para permitir historial de reenvíos tras un rechazo; se permite un pago en revisión o aprobado por cita a la vez.
-- PAGOS–HISTORIAL_PAGOS: 1 a N.
-- RLS limita las filas visibles según usuario, profesional asignado o administrador.
+- `PERFILES.id` referencia una cuenta Auth. El rol inicial es `usuario`; un administrador autorizado puede promover perfiles existentes.
+- `PERFILES.profesional_asignado_id` vincula cada paciente con su profesional. La vista `profesionales_publicos` solo expone el nombre y el ID de profesionales activos.
+- `CITAS` vincula paciente, profesional y servicio. Solo se muestran los espacios configurados por el administrador para el profesional asignado. PostgreSQL calcula duración y aporte, evita cruces y aplica reglas de horario.
+- `CONFIGURACION_APORTES` comienza en $5.000 COP para estudiante con correo institucional confirmado y $12.000 COP para otros usuarios. No valida matrícula; eso requeriría integración institucional.
+- Un paciente puede cancelar o reprogramar con al menos 24 horas. Luego de registrar una inasistencia, debe esperar ocho días para solicitar otra cita.
+- `PAGOS` permite nuevos envíos cuando un pago fue rechazado, pero solo uno puede estar en revisión o aprobado por cita. El monto lo calcula la base a partir de la cita.
+- Un administrador que cancela una cita con pago aprobado crea un bono por el monto aprobado.
+- Los documentos de remisión y los comprobantes usan buckets privados de Storage; no se guardan URLs públicas.
+- `HISTORIAL_PAGOS` y `HISTORIAL_CITAS` son auditorías escritas por triggers. Las notificaciones se almacenan en `NOTIFICACIONES`.
+- RLS limita perfiles privados a su dueño y administración; profesionales solo ven las citas asignadas y no obtienen acceso a pagos o documentos.

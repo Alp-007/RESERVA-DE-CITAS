@@ -462,11 +462,70 @@ footer p {
 .tabla-contenedor select { min-height: 36px; padding: 6px 8px; }
 .servicio-admin { display: grid; grid-template-columns: 1fr minmax(130px, 200px) auto; gap: 14px; align-items: end; padding: 14px 0; border-bottom: 1px solid #e9eeeb; }
 .servicio-admin p { margin: 5px 0 0; color: #66777d; font-size: 12px; }
+.servicio-admin-edicion { display: grid; grid-template-columns: minmax(180px, 1.2fr) minmax(150px, .6fr) minmax(220px, 1.5fr) auto auto; gap: 12px; align-items: end; padding: 16px 0; border-bottom: 1px solid #e9eeeb; }
+.servicio-admin-edicion label { display: flex; flex-direction: column; gap: 7px; color: #344a51; font-size: 13px; font-weight: 600; }
+.servicio-admin-edicion input:not([type="checkbox"]) { min-height: 40px; padding: 9px 11px; border: 1px solid #d6e1db; border-radius: 8px; background: white; color: #172b35; font: inherit; }
+.servicio-admin-edicion .servicio-admin-activo { display: flex; flex-direction: row; align-items: center; gap: 8px; }
+.servicio-admin-edicion h3 { grid-column: 1 / -1; margin: 0; color: #173b32; font: 700 17px 'Manrope', sans-serif; }
+.servicio-admin-nuevo { margin-top: 18px; padding: 16px; border: 1px dashed #cbd8d0; border-radius: 10px; }
 .acciones-admin { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-top: 14px; }
 .acciones-admin label { min-width: 220px; }
 .ocr-admin { display: flex; flex-wrap: wrap; gap: 8px 18px; color: #52686d; font-size: 12px; }
 .enlace-comprobante { color: #087b48; font-size: 13px; font-weight: 700; }
 .nota-revision { margin-top: 14px; }
+
+.inicio-usuario { width: min(1040px, 100%); min-height: 66vh; margin: 0 auto; padding: 62px 28px 76px; }
+.bienvenida-usuario { max-width: 700px; margin-bottom: 34px; }
+.bienvenida-usuario h1 { margin: 12px 0 10px; color: #173b32; font: 800 clamp(32px, 4vw, 46px)/1.12 'Manrope', sans-serif; letter-spacing: -1.4px; }
+.bienvenida-usuario p { margin: 0; color: #66777d; font-size: 15px; line-height: 1.7; }
+.menu-usuario { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.opcion-menu { min-height: 210px; padding: 24px; display: flex; flex-direction: column; align-items: flex-start; gap: 20px; border: 1px solid #e2ebe6; border-radius: 16px; background: #fff; color: inherit; text-align: left; box-shadow: 0 12px 32px #1c4a3008; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+.opcion-menu:hover { transform: translateY(-3px); border-color: #93c8a8; box-shadow: 0 16px 36px #1c4a3012; }
+.opcion-icono { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 13px; background: #e4f5e9; color: #087b48; font-size: 27px; font-weight: 600; }
+.opcion-texto { display: grid; gap: 8px; }
+.opcion-texto strong { color: #173b32; font: 700 18px 'Manrope', sans-serif; }
+.opcion-texto small { color: #66777d; font-size: 13px; line-height: 1.6; }
+.opcion-flecha { align-self: flex-end; color: #087b48; font-size: 22px; }
+.inicio-ayuda { margin-top: 24px; }
+.perfil-resumen { display: flex; align-items: center; gap: 22px; }
+.perfil-resumen h2 { margin: 0 0 12px; }
+.perfil-resumen p { margin: 7px 0; color: #66777d; font-size: 14px; }
+.perfil-resumen p strong { color: #344a51; }
+.avatar-perfil { width: 64px; height: 64px; flex: 0 0 64px; display: grid; place-items: center; border-radius: 50%; background: #e4f5e9; color: #087b48; font: 800 28px 'Manrope', sans-serif; }
+.formulario-registro { max-width: 760px; }
+.formulario-dos-columnas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+.formulario-dos-columnas label { display: flex; flex-direction: column; gap: 7px; color: #344a51; font-size: 13px; font-weight: 600; }
+.formulario-dos-columnas input, .formulario-dos-columnas select, .formulario-perfil input, .formulario-perfil select, .formulario-cambio textarea { width: 100%; min-height: 43px; padding: 10px 12px; border: 1px solid #d6e1db; border-radius: 8px; background: white; color: #172b35; font: inherit; }
+.formulario-dos-columnas small, .formulario-perfil small { color: #697a7e; font-size: 12px; font-weight: 400; line-height: 1.5; }
+.formulario-dos-columnas .campo-ancho { grid-column: 1 / -1; }
+.consentimiento { display: flex; align-items: flex-start; gap: 10px; margin: 18px 0 8px; color: #344a51; font-size: 13px; line-height: 1.6; }
+.consentimiento input { width: 18px; height: 18px; flex: 0 0 18px; margin: 1px 0 0; accent-color: #087b48; }
+.texto-error { color: #b42318 !important; }
+.enlace-recuperacion { align-self: flex-end; }
+.perfil-cuenta { display: flex; align-items: center; gap: 18px; margin-bottom: 28px; }
+.perfil-cuenta h2 { margin: 0 0 8px; }
+.perfil-cuenta p { margin: 5px 0; color: #66777d; font-size: 13px; }
+.formulario-perfil .formulario-dos-columnas { margin-bottom: 18px; }
+.formulario-cambio { display: grid; gap: 12px; }
+.formulario-cambio label { display: flex; flex-direction: column; gap: 7px; color: #344a51; font-size: 13px; font-weight: 600; }
+.formulario-cambio textarea { resize: vertical; }
+.formulario-horarios { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 12px; align-items: end; margin: 20px 0; }
+.formulario-horarios label { display: flex; flex-direction: column; gap: 7px; color: #344a51; font-size: 13px; font-weight: 600; }
+.formulario-horarios input, .formulario-horarios select { min-height: 43px; padding: 10px; border: 1px solid #d6e1db; border-radius: 8px; background: #fff; color: #172b35; font: inherit; }
+.estado-validacion { display: block; margin-top: 4px; color: #66777d; font-size: 11px; }
+.datos-privados { min-width: 210px; padding: 8px 0; font-size: 12px; }
+.datos-privados p { margin: 5px 0; }
+.resumen-indicadores { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 18px 0 28px; }
+.resumen-indicadores > div { display: grid; gap: 6px; padding: 18px; border: 1px solid #e2ebe6; border-radius: 12px; background: #f8fbf9; }
+.resumen-indicadores strong { color: #087b48; font: 800 26px 'Manrope', sans-serif; }
+.resumen-indicadores span { color: #66777d; font-size: 12px; }
+.panel-tarjeta > h3 { margin: 25px 0 12px; color: #173b32; font: 700 17px 'Manrope', sans-serif; }
+.notificacion-tarjeta { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px; border: 1px solid #b8dac5; border-radius: 12px; background: #f3faf5; }
+.notificacion-tarjeta p { margin: 7px 0 0; color: #66777d; font-size: 12px; }
+.notificacion-leida { border-color: #e2ebe6; background: #fff; }
+.monto-aporte { margin: 12px 0; padding: 12px 14px; border-radius: 9px; background: #f0f7f2; color: #344a51; }
+.monto-aporte strong { color: #087b48; }
+.monto-aporte small { color: #66777d; }
 
 @media (max-width: 680px) {
   .encabezado { padding: 14px 5%; }
@@ -483,4 +542,18 @@ footer p {
   .servicio-admin > button { justify-self: start; }
   .cita-cabecera { flex-direction: column; gap: 10px; }
   .estado { align-self: flex-start; }
+  .inicio-usuario { padding: 42px 16px 56px; }
+  .menu-usuario { grid-template-columns: 1fr; gap: 12px; }
+  .opcion-menu { min-height: 0; display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 14px; padding: 18px; }
+  .opcion-flecha { align-self: center; }
+  .perfil-resumen { align-items: flex-start; flex-direction: column; }
+  .formulario-dos-columnas { grid-template-columns: 1fr; }
+  .formulario-dos-columnas .campo-ancho { grid-column: auto; }
+  .perfil-cuenta { align-items: flex-start; flex-direction: column; }
+  .formulario-horarios { grid-template-columns: 1fr 1fr; }
+  .servicio-admin-edicion { grid-template-columns: 1fr 1fr; }
+  .servicio-admin-edicion .servicio-admin-descripcion { grid-column: 1 / -1; }
+  .formulario-horarios label:first-child { grid-column: 1 / -1; }
+  .resumen-indicadores { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .notificacion-tarjeta { flex-direction: column; }
 }

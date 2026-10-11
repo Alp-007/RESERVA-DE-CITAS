@@ -1,5 +1,3 @@
-import { createWorker } from 'tesseract.js'
-
 function convertirMonto(valor) {
   const limpio = valor.replace(/[^\d.,]/g, '')
   if (!limpio) return null
@@ -35,6 +33,7 @@ export function extraerDatosComprobante(texto, confianza = 0) {
 }
 
 export async function reconocerComprobante(archivo, onProgress = () => {}) {
+  const { createWorker } = await import('tesseract.js')
   const worker = await createWorker('spa', 1, {
     logger: (evento) => {
       if (evento.status === 'recognizing text') onProgress(Math.round((evento.progress || 0) * 100))

@@ -19,6 +19,9 @@ Consulta [el manual de puesta en marcha](docs/manual-usuario.md) para configurar
 - Registro e inicio/cierre de sesión con correo y contraseña.
 - Perfiles con roles `usuario`, `profesional`, `administrador`; rol inicial y elevación protegidos en base.
 - Paneles diferenciados: solicitud/cancelación y seguimiento de citas; agenda profesional asignada; administración de perfiles, precios, agenda y pagos.
+- Datos ampliados del registro, verificación institucional por correo confirmado, consentimiento, perfil editable y recuperación de contraseña.
+- Regla de 24 horas para cancelar/reprogramar, espera de 8 días tras inasistencia, bonos por cancelación administrativa y solicitudes de cambio de profesional.
+- Notificaciones dentro de la aplicación, auditoría de citas y pagos, horarios profesionales, tarifas de $5.000 COP y $12.000 COP configurables.
 - API REST Supabase desde el SDK; políticas RLS en todas las tablas y reglas de negocio en PostgreSQL.
 - Reglas de agenda lunes-sábado, 08:00–18:00 hora de Bogotá; duración según servicio; no permitir cruces.
 - Pago por transferencia Nequi con carga de comprobante privado, OCR local orientativo en imágenes, revisión humana y trazabilidad.
@@ -26,6 +29,7 @@ Consulta [el manual de puesta en marcha](docs/manual-usuario.md) para configurar
 ## Backend y base de datos
 
 - `supabase/migrations/202610110001_backend_citas.sql`: tablas, relaciones, triggers, RLS, funciones y Storage privado.
+- `supabase/migrations/202610110002_requisitos_resumen_proyecto.sql`: campos y reglas ampliadas del documento del proyecto. Debe ejecutarse después de la migración 001.
 - `supabase/seed.sql`: servicio de demostración y ejemplo de datos para desarrollo.
 - `supabase/consultas.sql`: consultas de control y ejemplos de administración.
 - `src/supabase.js`: cliente; permanece desactivado si faltan las variables para que la vista pública no quede en blanco.
@@ -40,7 +44,7 @@ Supabase genera los endpoints REST `/rest/v1` para las tablas. Las políticas se
 - `perfiles.rol` no se toma de metadatos del cliente; el trigger de perfil asigna `usuario`.
 - Los recibos están en un bucket privado y solo propietario/administrador pueden leerlos.
 - OCR corre en el navegador y solo sugiere datos. La aplicación no se conecta al sistema de Nequi ni verifica una transferencia real; la aprobación debe ser humana.
-- Precio inicial del servicio es cero. Un administrador debe configurarlo; cada cita conserva una copia del precio al momento de solicitud.
+- El aporte inicial es $5.000 COP para estudiantes con correo institucional confirmado y $12.000 COP para otros usuarios; un administrador puede ajustar los valores. Cada cita conserva una copia del aporte vigente al solicitarla.
 - Número receptor Nequi está vacío a propósito en `.env.example`; el equipo debe confirmarlo y configurar `VITE_NEQUI_DESTINO`.
 
 ## Estructura
@@ -65,4 +69,4 @@ docs/
 
 ## Entrega y validación
 
-Casos funcionales y de seguridad en `docs/plan-pruebas.md`. Aún deben ejecutarse contra Supabase con cuentas de desarrollo, completar capturas de evidencia y verificar el flujo Nequi/OCR con comprobantes ficticios. No aprobar transacciones reales desde este sistema.
+Casos funcionales y de seguridad en `docs/plan-pruebas.md`. Deben ejecutarse contra Supabase con cuentas de desarrollo y completarse las evidencias. No aprobar transacciones reales desde este sistema sin validarlas manualmente en Nequi.

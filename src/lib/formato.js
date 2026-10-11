@@ -9,7 +9,10 @@ export const etiquetaEstado = (estado) => ({
   confirmada: 'Confirmada',
   cancelada: 'Cancelada',
   completada: 'Completada',
+  no_asistio: 'No asistió',
   en_revision: 'En revisión',
   aprobado: 'Aprobado',
   rechazado: 'Rechazado',
 }[estado] || estado)
+
+export const FECHA_HOY_BOGOTA = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date())
