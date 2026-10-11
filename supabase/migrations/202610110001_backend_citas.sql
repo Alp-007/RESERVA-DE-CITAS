@@ -91,6 +91,14 @@ $$;
 drop trigger if exists auth_usuario_crea_perfil on auth.users;
 create trigger auth_usuario_crea_perfil after insert on auth.users for each row execute procedure public.crear_perfil_nuevo_usuario();
 
+-- Backfill Auth accounts that existed before this migration was installed.
+insert into public.perfiles (id, nombre_completo, tipo_usuario)
+select u.id,
+  coalesce(nullif(trim(u.raw_user_meta_data ->> 'nombre_completo'), ''), split_part(u.email, '@', 1)),
+  case when u.raw_user_meta_data ->> 'tipo_usuario' = 'estudiante' then 'estudiante' else 'externo' end
+from auth.users u
+on conflict (id) do nothing;
+
 create or replace function public.actualizar_fecha_modificacion()
 returns trigger language plpgsql set search_path = public
 as $$ begin new.actualizado_en = now(); return new; end; $$;
