@@ -400,3 +400,87 @@ footer p {
   margin-top: 8px;
   font-size: 13px;
 }
+
+.pagina { min-height: 100vh; }
+.barra-conexion { padding: 9px 16px; text-align: center; font-size: 13px; }
+.conexion-lista { color: #176b3a; background: #f0f7f2; }
+.conexion-pendiente { color: #8a4b08; background: #fff7e6; }
+.marca-boton { padding: 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.marca-boton strong, .marca-boton small { display: block; }
+.marca-boton small { margin-top: 3px; color: #687981; font-size: 12px; }
+.encabezado nav a { font-size: 14px; }
+.nav-enlace { padding: 8px 0; border: 0; background: transparent; color: #344a51; }
+.nav-enlace:hover, .enlace:hover, .volver:hover { text-decoration: underline; }
+.rol-etiqueta, .contador { padding: 6px 10px; border-radius: 999px; background: #e4f5e9; color: #087b48; font-size: 12px; font-weight: 700; }
+.mensaje-global { position: relative; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px max(7%, calc((100vw - 1100px)/2)); font-size: 14px; }
+.mensaje-global button { padding: 0 4px; border: 0; background: transparent; color: inherit; font-size: 22px; }
+.panel-contenedor { width: min(1120px, 100%); min-height: 66vh; margin: 0 auto; padding: 44px 28px 72px; }
+.panel-titulo, .seccion-encabezado, .cita-cabecera { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; }
+.panel-titulo { margin-bottom: 28px; }
+.panel-titulo h1 { margin: 8px 0; font: 800 clamp(30px, 4vw, 42px)/1.1 'Manrope', sans-serif; color: #173b32; letter-spacing: -1.4px; }
+.panel-titulo p, .seccion-encabezado p { margin: 0; color: #66777d; font-size: 14px; line-height: 1.6; }
+.panel-tarjeta { margin: 20px 0; padding: 26px; border: 1px solid #e2ebe6; border-radius: 16px; background: #fff; box-shadow: 0 12px 32px #1c4a3008; }
+.panel-tarjeta h2, .panel-seccion h2 { margin: 0 0 16px; font: 700 22px 'Manrope', sans-serif; color: #173b32; }
+.seccion-encabezado { align-items: center; margin-bottom: 18px; }
+.seccion-encabezado h2 { margin-bottom: 5px; }
+.panel-seccion { margin-top: 34px; }
+.formulario-cita { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: end; }
+.formulario-cita label, .acciones-admin label, .servicio-admin label, .pago-contenido label, .nota-revision { display: flex; flex-direction: column; gap: 7px; color: #344a51; font-size: 13px; font-weight: 600; }
+.formulario-cita input, .formulario-cita select, .formulario-cita textarea, .acciones-admin select, .servicio-admin input, .pago-contenido input, .nota-revision textarea, .tabla-contenedor select { width: 100%; min-height: 43px; padding: 10px 12px; border: 1px solid #d6e1db; border-radius: 8px; background: #fff; color: #172b35; }
+.formulario-cita textarea, .nota-revision textarea { resize: vertical; }
+.campo-ancho { grid-column: 1 / -1; }
+.ayuda { margin: 0; color: #697a7e; font-size: 12px; line-height: 1.6; }
+.alerta { padding: 12px 14px; border-radius: 8px; font-size: 14px; line-height: 1.5; }
+.alerta-error { color: #b42318; background: #fef3f2; }
+.alerta-exito { color: #176b3a; background: #ecfdf3; }
+.lista-tarjetas { display: grid; gap: 14px; }
+.cita-tarjeta { min-width: 0; padding: 20px; border: 1px solid #e2ebe6; border-radius: 13px; background: #fff; }
+.cita-tarjeta h3 { margin: 0 0 5px; color: #173b32; font: 700 17px 'Manrope', sans-serif; }
+.cita-tarjeta p { margin: 0; color: #66777d; font-size: 13px; line-height: 1.6; }
+.cita-motivo { margin: 14px 0 !important; }
+.estado { flex-shrink: 0; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #eef1f2; color: #536167; }
+.estado-pendiente, .estado-en_revision { background: #fff3d8; color: #8a4b08; }
+.estado-confirmada, .estado-aprobado, .estado-completada { background: #e7f6ed; color: #176b3a; }
+.estado-cancelada, .estado-rechazado { background: #fef0f0; color: #b42318; }
+.pago-resumen { margin: 12px 0 !important; }
+.boton-texto { padding: 7px 0; border: 0; background: transparent; font-weight: 700; }
+.peligro { color: #b42318; }
+.pago-formulario { margin-top: 14px; padding-top: 14px; border-top: 1px solid #e7ece9; }
+.pago-formulario summary { cursor: pointer; color: #087b48; font-weight: 700; }
+.pago-contenido { display: grid; gap: 12px; padding-top: 14px; }
+.pago-contenido > p { color: #344a51; line-height: 1.6; }
+.ocr-resumen { padding: 12px; border-radius: 9px; background: #f3f7f4; font-size: 13px; }
+.ocr-resumen p { margin: 5px 0; }
+.ocr-resumen dl { display: grid; grid-template-columns: minmax(130px, .35fr) 1fr; gap: 5px 12px; margin: 12px 0 0; }
+.ocr-resumen dt { color: #697a7e; }
+.ocr-resumen dd { margin: 0; color: #173b32; font-weight: 600; }
+.vacio { padding: 20px; border: 1px dashed #cbd8d0; border-radius: 10px; color: #66777d; text-align: center; }
+.tabla-contenedor { width: 100%; overflow-x: auto; }
+.tabla-contenedor table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+.tabla-contenedor th, .tabla-contenedor td { padding: 11px 9px; border-bottom: 1px solid #e9eeeb; }
+.tabla-contenedor th { color: #60756e; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+.tabla-contenedor select { min-height: 36px; padding: 6px 8px; }
+.servicio-admin { display: grid; grid-template-columns: 1fr minmax(130px, 200px) auto; gap: 14px; align-items: end; padding: 14px 0; border-bottom: 1px solid #e9eeeb; }
+.servicio-admin p { margin: 5px 0 0; color: #66777d; font-size: 12px; }
+.acciones-admin { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin-top: 14px; }
+.acciones-admin label { min-width: 220px; }
+.ocr-admin { display: flex; flex-wrap: wrap; gap: 8px 18px; color: #52686d; font-size: 12px; }
+.enlace-comprobante { color: #087b48; font-size: 13px; font-weight: 700; }
+.nota-revision { margin-top: 14px; }
+
+@media (max-width: 680px) {
+  .encabezado { padding: 14px 5%; }
+  .encabezado nav { justify-content: flex-start; gap: 12px; }
+  .encabezado nav > * { font-size: 12px; }
+  .panel-contenedor { padding: 28px 16px 52px; }
+  .panel-titulo { align-items: flex-start; }
+  .panel-titulo > button { flex-shrink: 0; padding: 9px 11px; }
+  .panel-tarjeta { padding: 18px; }
+  .formulario-cita { grid-template-columns: 1fr; }
+  .campo-ancho { grid-column: auto; }
+  .servicio-admin { grid-template-columns: 1fr 1fr; }
+  .servicio-admin > div { grid-column: 1 / -1; }
+  .servicio-admin > button { justify-self: start; }
+  .cita-cabecera { flex-direction: column; gap: 10px; }
+  .estado { align-self: flex-start; }
+}
