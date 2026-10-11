@@ -7,10 +7,21 @@ create extension if not exists btree_gist;
 create table if not exists public.perfiles (
   id uuid primary key references auth.users(id) on delete cascade,
   nombre_completo text not null check (char_length(trim(nombre_completo)) between 2 and 120),
+  correo text not null default '',
   tipo_usuario text not null default 'externo' check (tipo_usuario in ('estudiante', 'externo')),
-  rol text not null default 'usuario' check (rol in ('usuario', 'profesional', 'administrador')),
+  rol text not null default 'usuario',
   creado_en timestamptz not null default now(), actualizado_en timestamptz not null default now()
 );
+
+-- Extend an earlier basic profile table without deleting its existing rows.
+alter table public.perfiles add column if not exists correo text not null default '';
+alter table public.perfiles add column if not exists rol text not null default 'usuario';
+alter table public.perfiles add column if not exists actualizado_en timestamptz not null default now();
+do $$ begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public.perfiles'::regclass and conname = 'perfiles_rol_valido') then
+    alter table public.perfiles add constraint perfiles_rol_valido check (rol in ('usuario', 'profesional', 'administrador'));
+  end if;
+end $$;
 
 create table if not exists public.servicios (
   id uuid primary key default gen_random_uuid(), nombre text not null unique,
@@ -80,22 +91,25 @@ create or replace function public.crear_perfil_nuevo_usuario()
 returns trigger language plpgsql security definer set search_path = public
 as $$
 begin
-  insert into public.perfiles (id, nombre_completo, tipo_usuario)
+  insert into public.perfiles (id, nombre_completo, tipo_usuario, correo)
   values (new.id,
     coalesce(nullif(trim(new.raw_user_meta_data ->> 'nombre_completo'), ''), split_part(new.email, '@', 1)),
-    case when new.raw_user_meta_data ->> 'tipo_usuario' = 'estudiante' then 'estudiante' else 'externo' end)
+    case when new.raw_user_meta_data ->> 'tipo_usuario' = 'estudiante' then 'estudiante' else 'externo' end,
+    coalesce(new.email, ''))
   on conflict (id) do nothing;
   return new;
 end;
 $$;
 drop trigger if exists auth_usuario_crea_perfil on auth.users;
+drop trigger if exists crear_perfil_despues_del_registro on auth.users;
 create trigger auth_usuario_crea_perfil after insert on auth.users for each row execute procedure public.crear_perfil_nuevo_usuario();
 
 -- Backfill Auth accounts that existed before this migration was installed.
-insert into public.perfiles (id, nombre_completo, tipo_usuario)
+insert into public.perfiles (id, nombre_completo, tipo_usuario, correo)
 select u.id,
   coalesce(nullif(trim(u.raw_user_meta_data ->> 'nombre_completo'), ''), split_part(u.email, '@', 1)),
-  case when u.raw_user_meta_data ->> 'tipo_usuario' = 'estudiante' then 'estudiante' else 'externo' end
+  case when u.raw_user_meta_data ->> 'tipo_usuario' = 'estudiante' then 'estudiante' else 'externo' end,
+  coalesce(u.email, '')
 from auth.users u
 on conflict (id) do nothing;
 
@@ -243,6 +257,9 @@ alter table public.pagos enable row level security;
 alter table public.historial_pagos enable row level security;
 
 drop policy if exists perfiles_leer on public.perfiles;
+drop policy if exists "Cada usuario puede consultar su perfil" on public.perfiles;
+drop policy if exists "Cada usuario puede actualizar su perfil" on public.perfiles;
+drop policy if exists "Cada usuario puede crear su perfil" on public.perfiles;
 create policy perfiles_leer on public.perfiles for select to authenticated
 using (id = auth.uid() or public.es_administrador() or exists (
   select 1 from public.citas c where c.usuario_id = perfiles.id and c.profesional_id = auth.uid()
