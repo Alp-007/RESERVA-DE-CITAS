@@ -370,6 +370,23 @@ footer p {
   text-align: center;
 }
 
+.mensaje-error,
+.mensaje-exito {
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.mensaje-error {
+  color: #b42318 !important;
+  background: #fef3f2;
+}
+
+.mensaje-exito {
+  color: #176b3a !important;
+  background: #ecfdf3;
+}
+
 .enlace,
 .volver {
   padding: 0;

@@ -1,12 +1,56 @@
 import { useState, useEffect } from 'react'
 import './App.css'
-import { supabase } from './supabase'
+import { supabase, supabaseConfigurado } from './supabase'
 
 function App() {
   const [pantalla, setPantalla] = useState('inicio')
   const [cargando, setCargando] = useState(false)
 const [mensaje, setMensaje] = useState('')
-const [tipoMensaje, setTipoMensaje] = useState('')
+  const [tipoMensaje, setTipoMensaje] = useState('')
+  const [usuario, setUsuario] = useState(null)
+
+  useEffect(() => {
+    if (!supabaseConfigurado) return undefined
+    supabase.auth.getSession().then(({ data }) => setUsuario(data.session?.user ?? null))
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUsuario(session?.user ?? null)
+    })
+    return () => subscription.unsubscribe()
+  }, [])
+
+  async function iniciarSesion(e) {
+    e.preventDefault()
+    setMensaje('')
+    setTipoMensaje('')
+    setCargando(true)
+    const formulario = e.currentTarget
+    try {
+      if (!supabaseConfigurado) throw new Error('Primero hay que conectar Supabase en el archivo .env.')
+      const { error } = await supabase.auth.signInWithPassword({
+        email: formulario.correoLogin.value.trim(),
+        password: formulario.contrasenaLogin.value,
+      })
+      if (error) throw error
+      setMensaje('Sesión iniciada correctamente.')
+      setTipoMensaje('exito')
+      setPantalla('inicio')
+      formulario.reset()
+    } catch (error) {
+      setMensaje(error.message || 'No se pudo iniciar sesión.')
+      setTipoMensaje('error')
+    } finally {
+      setCargando(false)
+    }
+  }
+
+  async function cerrarSesion() {
+    if (!supabase) return
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      setMensaje(error.message)
+      setTipoMensaje('error')
+    }
+  }
 
 async function registrarUsuario(e) {
   e.preventDefault()
@@ -21,6 +65,7 @@ async function registrarUsuario(e) {
   const contrasena = formulario.contrasenaRegistro.value
 
   try {
+    if (!supabaseConfigurado) throw new Error('Primero hay que conectar Supabase en el archivo .env.')
     const { data, error } = await supabase.auth.signUp({
       email: correo,
       password: contrasena,
@@ -53,6 +98,10 @@ async function registrarUsuario(e) {
 
   useEffect(() => {
     async function comprobarConexion() {
+      if (!supabaseConfigurado) {
+        setConexion('Falta conectar Supabase: configura el archivo .env')
+        return
+      }
       try {
         const { error } = await supabase.auth.getSession()
 
@@ -76,8 +125,8 @@ async function registrarUsuario(e) {
             <div style={{
         padding: '10px',
         textAlign: 'center',
-        background: '#f0f7f2',
-        color: '#176b3a',
+        background: supabaseConfigurado ? '#f0f7f2' : '#fff7e6',
+        color: supabaseConfigurado ? '#176b3a' : '#8a4b08',
         fontSize: '14px'
       }}>
         {conexion}
@@ -94,9 +143,13 @@ async function registrarUsuario(e) {
         <nav>
           <a href="#inicio" onClick={() => setPantalla('inicio')}>Inicio</a>
           <a href="#servicios" onClick={() => setPantalla('inicio')}>Servicios</a>
-          <button className="boton-secundario" onClick={() => setPantalla('login')}>
-            Iniciar sesión
-          </button>
+          {usuario ? (
+            <button className="boton-secundario" onClick={cerrarSesion}>Cerrar sesión</button>
+          ) : (
+            <button className="boton-secundario" onClick={() => setPantalla('login')}>
+              Iniciar sesión
+            </button>
+          )}
         </nav>
       </header>
 
@@ -167,23 +220,22 @@ async function registrarUsuario(e) {
 
       {pantalla === 'login' && (
         <main className="zona-login">
-          <form className="formulario" onSubmit={(e) => {
-            e.preventDefault()
-            alert('El inicio de sesión se conectará a la base de datos en una siguiente etapa.')
-          }}>
+          <form className="formulario" onSubmit={iniciarSesion}>
             <div className="icono-mental centrado">♡</div>
             <span className="etiqueta">BIENESTAR UNIVERSITARIO</span>
             <h1>Bienvenido</h1>
             <p>Ingresa a tu cuenta para continuar.</p>
 
+            {mensaje && <p role="status" className={tipoMensaje === 'error' ? 'mensaje-error' : 'mensaje-exito'}>{mensaje}</p>}
+
             <label htmlFor="correo">Correo electrónico</label>
-            <input id="correo" type="email" placeholder="tucorreo@ejemplo.com" required />
+            <input id="correo" name="correoLogin" type="email" placeholder="tucorreo@ejemplo.com" required />
 
             <label htmlFor="contrasena">Contraseña</label>
-            <input id="contrasena" type="password" placeholder="Ingresa tu contraseña" required />
+            <input id="contrasena" name="contrasenaLogin" type="password" placeholder="Ingresa tu contraseña" required />
 
-            <button className="boton-principal ancho" type="submit">
-              Iniciar sesión
+            <button className="boton-principal ancho" type="submit" disabled={cargando}>
+              {cargando ? 'Ingresando...' : 'Iniciar sesión'}
             </button>
 
             <p className="texto-registro">
@@ -225,20 +277,20 @@ async function registrarUsuario(e) {
 
 
             <label htmlFor="nombre">Nombre completo</label>
-            <input id="nombre" type="text" placeholder="Escribe tu nombre completo" required />
+            <input id="nombre" name="nombre" type="text" placeholder="Escribe tu nombre completo" required />
 
             <label htmlFor="correoRegistro">Correo electrónico</label>
-            <input id="correoRegistro" type="email" placeholder="tucorreo@ejemplo.com" required />
+            <input id="correoRegistro" name="correoRegistro" type="email" placeholder="tucorreo@ejemplo.com" required />
 
             <label htmlFor="tipoUsuario">Tipo de usuario</label>
-            <select id="tipoUsuario" required defaultValue="">
+            <select id="tipoUsuario" name="tipoUsuario" required defaultValue="">
               <option value="" disabled>Selecciona una opción</option>
               <option value="estudiante">Estudiante UNIMINUTO</option>
               <option value="externo">Usuario externo</option>
             </select>
 
             <label htmlFor="contrasenaRegistro">Crear contraseña</label>
-            <input id="contrasenaRegistro" type="password" minLength="8" placeholder="Mínimo 8 caracteres" required />
+            <input id="contrasenaRegistro" name="contrasenaRegistro" type="password" minLength="8" placeholder="Mínimo 8 caracteres" required />
 
             
 <button
