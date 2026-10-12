@@ -7,6 +7,7 @@ import PanelProfesional from './pages/PanelProfesional'
 import PanelAdministrador from './pages/PanelAdministrador'
 import PerfilUsuario from './pages/PerfilUsuario'
 import NotificacionesUsuario from './pages/NotificacionesUsuario'
+import Asistente from './components/Asistente'
 
 const etiquetaRol = { usuario: 'Usuario', profesional: 'Profesional', administrador: 'Administrador' }
 
@@ -133,7 +134,7 @@ function App() {
     </div>
     <header className="encabezado">
       <button className="marca marca-boton" onClick={() => setPantalla(usuario ? (esUsuario ? 'menu' : 'panel') : 'inicio')} aria-label="Ir al inicio">
-        <span className="logo">U</span><span><strong>UNIMINUTO</strong><small>Bienestar Universitario</small></span>
+        <span className="logo" aria-hidden="true">BU</span><span><strong>UNIMINUTO</strong><small>Bienestar Universitario</small></span>
       </button>
       <nav aria-label="Navegación principal">
         <button className="nav-enlace" onClick={() => setPantalla(usuario ? (esUsuario ? 'menu' : 'panel') : 'inicio')}>{usuario ? (esUsuario ? 'Inicio' : 'Mi panel') : 'Inicio'}</button>
@@ -231,6 +232,7 @@ function App() {
     {pantalla === 'notificaciones' && usuario && esUsuario && <NotificacionesUsuario supabase={supabase} usuario={usuario} />}
 
     <footer id="nosotros"><strong>UNIMINUTO · Bienestar Universitario</strong><p>Un espacio para el cuidado y el bienestar emocional.</p><small>Atención de lunes a sábado · Hora de Bogotá</small></footer>
+    <Asistente />
   </div>
 }
 

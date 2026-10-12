@@ -13,9 +13,12 @@ Validación local: `npm.cmd test`, `npm.cmd run lint` y `npm.cmd run build`.
 
 Consulta [el manual de puesta en marcha](docs/manual-usuario.md) para configurar Supabase, crear roles y ejecutar los flujos. Requiere `.env` local; `.env.example` es solo una plantilla.
 
+Consulta [los pendientes para publicar](docs/pendientes-lanzamiento.md) antes de presentar el sistema como versión final.
+
 ## Funciones
 
 - Página pública responsive con servicios.
+- Asistente informativo local con respuestas rápidas sobre registro, citas y pagos; no envía conversaciones a terceros ni sustituye atención profesional.
 - Registro e inicio/cierre de sesión con correo y contraseña.
 - Perfiles con roles `usuario`, `profesional`, `administrador`; rol inicial y elevación protegidos en base.
 - Paneles diferenciados: solicitud/cancelación y seguimiento de citas; agenda profesional asignada; administración de perfiles, precios, agenda y pagos.
@@ -51,6 +54,7 @@ Supabase genera los endpoints REST `/rest/v1` para las tablas. Las políticas se
 
 ```text
 src/
+  components/            Asistente de ayuda
   pages/                 Registro, panel usuario/profesional/administrador
   lib/                   Formato COP/fechas y OCR de comprobantes
   App.jsx                Auth, navegación, landing y selección de panel
