@@ -137,6 +137,7 @@ function App() {
     {screen === 'login' && <Login submit={handleLogin} notice={notice} loading={loading} home={() => setScreen('home')} register={() => { setNotice(null); setScreen('register') }} demo={enterDemo} />}
     {screen === 'register' && <Register submit={handleRegister} notice={notice} loading={loading} home={() => setScreen('home')} login={() => { setNotice(null); setScreen('login') }} />}
     {screen === 'portal' && <Portal role={role} session={session} tab={tab} setTab={setTab} logout={logout} notice={notice} clearNotice={() => setNotice(null)} appointments={appointments} professionals={professionals} contribution={contribution} profileType={profileType} setProfileType={setProfileType} slot={slot} setSlot={setSlot} bookingStep={bookingStep} setBookingStep={setBookingStep} reference={reference} setReference={setReference} reportPayment={reportPayment} approvePayment={approvePayment} setAppointmentStatus={setAppointmentStatus} addProfessional={addProfessional} approvedTotal={approvedTotal} />}
+    <ChatAssistant />
   </div>
 }
 
@@ -146,6 +147,30 @@ function Icon({ children }) { return <span className="icon" aria-hidden="true">{
 function Alert({ notice }) { return notice && <div className={`alert ${notice.tone}`} role="status"><Icon>{notice.tone === 'success' ? '✓' : '!'}</Icon><span>{notice.text}</span></div> }
 function Status({ children }) { return <span className={`status ${String(children).toLowerCase().replaceAll(' ', '-')}`}>{children}</span> }
 function Button({ children, className = '', ...props }) { return <button className={`button ${className}`} {...props}>{children}</button> }
+
+function ChatAssistant() {
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState('')
+  const [messages, setMessages] = useState([{ from: 'bot', text: 'Hola, soy el asistente de Bienestar. Puedo orientarte sobre citas, pagos y acceso al portal.' }])
+  const answer = (message) => {
+    const value = message.toLowerCase()
+    if (value.includes('cita') || value.includes('agenda') || value.includes('horario')) return 'Para solicitar una cita, ingresa al portal y selecciona “Agendar cita”. Allí podrás elegir el horario disponible que prefieras.'
+    if (value.includes('pago') || value.includes('aporte') || value.includes('bre')) return 'El aporte se reporta al finalizar la selección de horario. Conserva el número de aprobación de Bre-B para completar el registro.'
+    if (value.includes('contraseña') || value.includes('acceso') || value.includes('ingresar')) return 'Usa el correo con el que te registraste para ingresar. Si todavía no tienes cuenta, selecciona “Crear cuenta” desde la página principal.'
+    if (value.includes('urgencia') || value.includes('emergencia') || value.includes('crisis')) return 'Si estás en una emergencia o sientes que podrías hacerte daño, busca ayuda inmediata: comunícate con la línea de emergencias de tu localidad o acude al servicio de urgencias más cercano. Este chat no reemplaza la atención profesional de emergencia.'
+    return 'Gracias por escribirnos. Puedo ayudarte con agendamiento, aportes, acceso al portal o información general del servicio.'
+  }
+  const send = (message) => {
+    const clean = message.trim()
+    if (!clean) return
+    setMessages((current) => [...current, { from: 'user', text: clean }, { from: 'bot', text: answer(clean) }])
+    setText('')
+  }
+  return <aside className={`chatbot ${open ? 'open' : ''}`} aria-label="Asistente de Bienestar">
+    {open && <section className="chatbot-panel"><header><div><span className="chatbot-avatar">♡</span><p><b>Asistente de Bienestar</b><small><i /> En línea</small></p></div><button type="button" aria-label="Cerrar asistente" onClick={() => setOpen(false)}>×</button></header><div className="chatbot-notice">Orientación general. No reemplaza la atención psicológica ni la atención de emergencias.</div><div className="chatbot-messages" aria-live="polite">{messages.map((message, index) => <p key={`${message.from}-${index}`} className={message.from}>{message.text}</p>)}</div><div className="chatbot-prompts"><button type="button" onClick={() => send('Quiero agendar una cita')}>Agendar una cita</button><button type="button" onClick={() => send('Tengo una pregunta sobre pagos')}>Aportes y pagos</button></div><form onSubmit={(event) => { event.preventDefault(); send(text) }}><input value={text} onChange={(event) => setText(event.target.value)} placeholder="Escribe tu consulta..." aria-label="Escribe tu consulta" /><button type="submit" aria-label="Enviar mensaje">↑</button></form></section>}
+    <button className="chatbot-trigger" type="button" aria-expanded={open} onClick={() => setOpen((value) => !value)}><span>{open ? '×' : '◌'}</span><b>{open ? 'Cerrar' : '¿Necesitas ayuda?'}</b></button>
+  </aside>
+}
 
 function Header({ goHome, openLogin, openRegister }) {
   return <header className="header"><button className="brand-button" type="button" onClick={goHome}><Brand /></button><nav><button type="button" onClick={goHome}>Inicio</button><a href="#servicios">Servicios</a><a href="#proceso">Cómo funciona</a></nav><div><button className="plain" type="button" onClick={openRegister}>Crear cuenta</button><Button className="dark" type="button" onClick={openLogin}>Ingresar <Icon>→</Icon></Button></div></header>
