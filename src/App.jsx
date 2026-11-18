@@ -10,14 +10,14 @@ const slots = [
 ]
 
 const seedAppointments = [
-  { id: 'CIT-2401', patient: 'Camila R.', code: 'P-014', professional: 'Ps. Valentina Rojas', date: 'Martes 14 de octubre', time: '9:00 a. m.', room: 'Consultorio 204', status: 'Confirmada', payment: 'Aprobado', amount: 5000, reference: 'BRB-740021' },
-  { id: 'CIT-2402', patient: 'Santiago M.', code: 'P-027', professional: 'Ps. Valentina Rojas', date: 'Jueves 16 de octubre', time: '2:00 p. m.', room: 'Consultorio 204', status: 'Pendiente de validación', payment: 'Reportado', amount: 12000, reference: 'BRB-740155' },
-  { id: 'CIT-2398', patient: 'Andrea C.', code: 'P-031', professional: 'Ps. Julián Torres', date: 'Viernes 10 de octubre', time: '3:30 p. m.', room: 'Consultorio 108', status: 'Atendida', payment: 'Aprobado', amount: 5000, reference: 'BRB-739875' },
+  { id: 'CIT-2401', patient: 'Camila R.', phone: '300 555 0184', code: 'P-014', professional: 'Ps. Valentina Rojas', date: 'Martes 14 de octubre', time: '9:00 a. m.', room: 'Consultorio 204', status: 'Confirmada', payment: 'Aprobado', amount: 5000, reference: 'BRB-740021' },
+  { id: 'CIT-2402', patient: 'Santiago M.', phone: '315 420 1168', code: 'P-027', professional: 'Ps. Valentina Rojas', date: 'Jueves 16 de octubre', time: '2:00 p. m.', room: 'Consultorio 204', status: 'Programada', payment: 'Reportado', amount: 12000, reference: 'BRB-740155' },
+  { id: 'CIT-2398', patient: 'Andrea C.', phone: '301 771 2380', code: 'P-031', professional: 'Ps. Julián Torres', date: 'Viernes 10 de octubre', time: '3:30 p. m.', room: 'Consultorio 108', status: 'Atendida', payment: 'Aprobado', amount: 5000, reference: 'BRB-739875' },
 ]
 
 const seedProfessionals = [
-  { id: 'PRO-01', name: 'Ps. Valentina Rojas', area: 'Psicología clínica', hours: 'Lun - Vie · 8:00 a. m. - 4:00 p. m.' },
-  { id: 'PRO-02', name: 'Ps. Julián Torres', area: 'Orientación y bienestar', hours: 'Mar - Sáb · 9:00 a. m. - 5:00 p. m.' },
+  { id: 'PRO-01', name: 'Ps. Valentina Rojas', area: 'Psicología clínica', hours: 'Lun - Vie · 8:00 a. m. - 4:00 p. m.', active: true, schedule: 'Lun 08–16 · Mar 08–16 · Mié descanso · Jue 08–16 · Vie 08–16', photo: '' },
+  { id: 'PRO-02', name: 'Ps. Julián Torres', area: 'Orientación y bienestar', hours: 'Mar - Sáb · 9:00 a. m. - 5:00 p. m.', active: true, schedule: 'Mar 09–17 · Mié 09–17 · Jue 09–17 · Vie 09–17 · Sáb 09–17', photo: '' },
 ]
 
 const money = (value) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value)
@@ -29,12 +29,16 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [connection, setConnection] = useState('Conectando con el servicio...')
   const [appointments, setAppointments] = useState(seedAppointments)
-  const [professionals, setProfessionals] = useState(seedProfessionals)
+  const [professionals, setProfessionals] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('bienestar_professional_photos') || 'null') || seedProfessionals } catch { return seedProfessionals }
+  })
+  const [adminPhoto, setAdminPhoto] = useState(() => localStorage.getItem('bienestar_admin_photo') || '')
   const [tab, setTab] = useState('summary')
   const [slot, setSlot] = useState(null)
   const [bookingStep, setBookingStep] = useState('schedule')
   const [profileType, setProfileType] = useState('student')
   const [reference, setReference] = useState('')
+  const [openedAt] = useState(() => new Date())
 
   useEffect(() => {
     let mounted = true
@@ -112,14 +116,16 @@ function App() {
   }
 
   function setAppointmentStatus(id, status) {
+    const current = appointments.find((item) => item.id === id)
+    if (status === 'Cancelada' && current && !window.confirm(`¿Seguro que deseas cancelar la cita ${id} de ${current.patient}?`)) return
     setAppointments((current) => current.map((item) => item.id === id ? { ...item, status } : item))
-    setNotice({ tone: 'success', text: `La cita ${id} fue actualizada como ${status.toLowerCase()}.` })
+    setNotice({ tone: status === 'Cancelada' ? 'warning' : 'success', text: status === 'Cancelada' ? `Cita ${id} cancelada. Informa a ${current.patient} al ${current.phone || 'teléfono registrado'} sobre la cancelación.` : `La cita ${id} fue actualizada como ${status.toLowerCase()}.` })
   }
 
   function addProfessional(event) {
     event.preventDefault()
     const form = event.currentTarget
-    setProfessionals((current) => [...current, { id: `PRO-${String(current.length + 1).padStart(2, '0')}`, name: `Ps. ${form.fullName.value.trim()}`, area: form.area.value, hours: form.hours.value || 'Horario por definir' }])
+    setProfessionals((current) => [...current, { id: `PRO-${String(current.length + 1).padStart(2, '0')}`, name: `Ps. ${form.fullName.value.trim()}`, area: form.area.value || 'Atención psicológica', hours: 'Horario por asignar', active: true, schedule: 'Aún no se han definido días de atención' }])
     form.reset()
     setNotice({ tone: 'success', text: 'El perfil del profesional fue creado para esta demostración.' })
   }
@@ -135,14 +141,17 @@ function App() {
     <div className="utility"><span className="online-dot" />{connection}<span>Atención psicológica · Soacha</span></div>
     {screen === 'home' && <><Header goHome={() => setScreen('home')} openLogin={() => { setNotice(null); setScreen('login') }} openRegister={() => { setNotice(null); setScreen('register') }} /><Home openLogin={() => setScreen('login')} openRegister={() => setScreen('register')} demo={() => enterDemo('user')} /></>}
     {screen === 'login' && <Login submit={handleLogin} notice={notice} loading={loading} home={() => setScreen('home')} register={() => { setNotice(null); setScreen('register') }} demo={enterDemo} />}
-    {screen === 'register' && <Register submit={handleRegister} notice={notice} loading={loading} home={() => setScreen('home')} login={() => { setNotice(null); setScreen('login') }} />}
-    {screen === 'portal' && <Portal role={role} session={session} tab={tab} setTab={setTab} logout={logout} notice={notice} clearNotice={() => setNotice(null)} appointments={appointments} professionals={professionals} contribution={contribution} profileType={profileType} setProfileType={setProfileType} slot={slot} setSlot={setSlot} bookingStep={bookingStep} setBookingStep={setBookingStep} reference={reference} setReference={setReference} reportPayment={reportPayment} approvePayment={approvePayment} setAppointmentStatus={setAppointmentStatus} addProfessional={addProfessional} approvedTotal={approvedTotal} />}
+    {screen === 'register' && <Register todayMs={openedAt.getTime()} submit={handleRegister} notice={notice} loading={loading} home={() => setScreen('home')} login={() => { setNotice(null); setScreen('login') }} />}
+    {screen === 'portal' && <Portal openedAt={openedAt} role={role} session={session} tab={tab} setTab={setTab} logout={logout} notice={notice} clearNotice={() => setNotice(null)} appointments={appointments} professionals={professionals} setProfessionals={setProfessionals} adminPhoto={adminPhoto} setAdminPhoto={setAdminPhoto} contribution={contribution} profileType={profileType} setProfileType={setProfileType} slot={slot} setSlot={setSlot} bookingStep={bookingStep} setBookingStep={setBookingStep} reference={reference} setReference={setReference} reportPayment={reportPayment} approvePayment={approvePayment} setAppointmentStatus={setAppointmentStatus} addProfessional={addProfessional} approvedTotal={approvedTotal} />}
     <ChatAssistant />
   </div>
 }
 
 function Mark() { return <span className="mark">M</span> }
 function Brand({ short = false }) { return <div className="brand"><Mark />{!short && <span><b>UNIMINUTO</b><small>Bienestar Universitario</small></span>}</div> }
+function Avatar({ name, src, className = '' }) { return src ? <img className={`avatar-image ${className}`} src={src} alt={`Foto de ${name}`} /> : <span className={`avatar-fallback ${className}`} aria-label={`Sin foto de ${name}`}>{name.split(' ').filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</span> }
+function FeedbackModal({ tone, children, onClose }) { return <div className="feedback-overlay" role="presentation"><section className={`feedback-modal ${tone}`} role="alertdialog" aria-modal="true" aria-label={tone === 'error' ? 'Error' : 'Confirmación'}><button type="button" className="feedback-close" onClick={onClose} aria-label="Cerrar mensaje">×</button><i aria-hidden="true">{tone === 'error' ? '!' : '✓'}</i><h2>{tone === 'error' ? 'Revisa la información' : 'Listo'}</h2><p>{children}</p><Button className="dark" type="button" onClick={onClose}>Entendido</Button></section></div> }
+function readImageAsDataUrl(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error('No se pudo leer la imagen.')); reader.readAsDataURL(file) }) }
 function Icon({ children }) { return <span className="icon" aria-hidden="true">{children}</span> }
 function Alert({ notice }) { return notice && <div className={`alert ${notice.tone}`} role="status"><Icon>{notice.tone === 'success' ? '✓' : '!'}</Icon><span>{notice.text}</span></div> }
 function Status({ children }) { return <span className={`status ${String(children).toLowerCase().replaceAll(' ', '-')}`}>{children}</span> }
@@ -195,19 +204,20 @@ function Login({ submit, notice, loading, home, register, demo }) {
   return <main className="auth-page"><aside><Brand /><div><p className="eyebrow">PORTAL DE BIENESTAR</p><h1>Un lugar seguro para empezar.</h1><p>Accede a tus citas, notificaciones y solicitudes de atención desde un único lugar.</p></div><ul><li>⌾ Tus datos se muestran según el rol autorizado.</li><li>♡ Atención organizada y centrada en las personas.</li></ul></aside><section><button className="back" type="button" onClick={home}>← Volver al inicio</button><form className="login-form" onSubmit={submit}><p className="eyebrow">INICIAR SESIÓN</p><h2>Te damos la bienvenida.</h2><p>Ingresa con el correo y contraseña registrados.</p><Alert notice={notice} /><label>Correo electrónico<input name="email" type="email" autoComplete="email" placeholder="nombre@uniminuto.edu.co" required /></label><label>Contraseña<input name="password" type="password" autoComplete="current-password" placeholder="Escribe tu contraseña" required /></label><Button className="dark full" type="submit" disabled={loading}>{loading ? 'Ingresando...' : 'Ingresar al portal'} <Icon>→</Icon></Button><div className="switch">¿Aún no tienes una cuenta? <button type="button" onClick={register}>Regístrate</button></div></form><div className="demo"><b>Vista de demostración</b><p>Explora los perfiles sin crear ni modificar datos reales.</p><div><button type="button" onClick={() => demo('user')}>Usuario</button><button type="button" onClick={() => demo('professional')}>Profesional</button><button type="button" onClick={() => demo('admin')}>Administrador</button></div></div></section></main>
 }
 
-function Register({ submit, notice, loading, home, login }) {
+function Register({ submit, notice, loading, home, login, todayMs }) {
   const [birth, setBirth] = useState('')
-  const age = birth ? Math.max(0, Math.floor((Date.now() - new Date(birth).getTime()) / 31557600000)) : ''
+  const age = birth ? Math.max(0, Math.floor((todayMs - new Date(birth).getTime()) / 31557600000)) : ''
   return <main className="register-page"><aside><Brand /><p className="eyebrow">CREA TU CUENTA</p><h1>Comienza tu proceso de atención.</h1><p>Completa la información inicial. Los campos con <b>*</b> son obligatorios.</p><div className="privacy"><i>⌾</i><span><strong>Información protegida</strong><small>Los documentos de identidad, dirección y remisión serán de acceso exclusivo del equipo administrador autorizado.</small></span></div><button className="back" type="button" onClick={home}>← Volver al inicio</button></aside><form className="registration" onSubmit={submit}><div><p className="eyebrow">REGISTRO</p><h2>Datos de la persona</h2><p>Tu perfil se verificará después de confirmar el correo.</p></div><Alert notice={notice} /><div className="form-grid"><Field label="Nombre completo" required><input name="fullName" placeholder="Escribe tu nombre completo" required /></Field><Field label="Tipo de documento" required><select name="documentType" defaultValue="" required><option value="" disabled>Selecciona una opción</option><option>Cédula de ciudadanía</option><option>Tarjeta de identidad</option><option>Cédula de extranjería</option><option>Pasaporte</option></select></Field><Field label="Número de documento" required><input name="documentNumber" inputMode="numeric" placeholder="Sin puntos ni espacios" required /></Field><Field label="Fecha de nacimiento" required><input name="birthDate" type="date" value={birth} onChange={(event) => setBirth(event.target.value)} required /></Field><Field label="Edad calculada"><input value={age === '' ? 'Se calcula automáticamente' : `${age} años`} readOnly /></Field><Field label="Teléfono de contacto" required><input name="phone" type="tel" placeholder="300 000 0000" required /></Field><Field label="Dirección" required wide><input name="address" placeholder="Dirección de residencia" required /></Field><Field label="Correo electrónico" required><input name="email" type="email" autoComplete="email" placeholder="nombre@correo.com" required /></Field><Field label="Tipo de usuario" required><select name="userType" defaultValue="" required><option value="" disabled>Selecciona una opción</option><option value="estudiante">Estudiante UNIMINUTO</option><option value="docente">Docente</option><option value="administrativo">Administrativo</option><option value="externo">Usuario externo</option></select></Field><Field label="Jornada de preferencia" required><select name="preference" defaultValue="" required><option value="" disabled>Selecciona una opción</option><option>Mañana</option><option>Tarde</option><option>Indiferente</option></select></Field><Field label="Documento de remisión (opcional)" wide><input name="referral" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" /><small>PDF, JPG, PNG o WEBP · Máximo 8 MB</small></Field><Field label="Crear contraseña" required wide><input name="password" type="password" minLength="8" autoComplete="new-password" placeholder="Mínimo 8 caracteres" required /></Field></div><label className="consent"><input type="checkbox" required /><span>Autorizo el tratamiento de mis datos personales y confirmo que la información suministrada es veraz. <b>*</b></span></label><Button className="dark full" type="submit" disabled={loading}>{loading ? 'Creando cuenta...' : 'Crear cuenta y verificar correo'} <Icon>→</Icon></Button><div className="switch">¿Ya tienes cuenta? <button type="button" onClick={login}>Inicia sesión</button></div></form></main>
 }
 function Field({ label, required, wide, children }) { return <label className={`field ${wide ? 'wide' : ''}`}><span>{label}{required && <b> *</b>}</span>{children}</label> }
 
 function Portal(props) {
-  const { role, session, tab, setTab, logout, notice, clearNotice } = props
-  const nav = role === 'admin' ? [['summary', 'Resumen', '▦'], ['professionals', 'Profesionales', '◉'], ['appointments', 'Citas', '▣'], ['payments', 'Aportes', '◇'], ['reports', 'Reportes', '▤']] : role === 'professional' ? [['summary', 'Mi agenda', '▣'], ['activity', 'Actualizar atención', '✓'], ['availability', 'Disponibilidad', '◷']] : [['summary', 'Mi resumen', '▦'], ['book', 'Agendar cita', '▣'], ['history', 'Mis citas', '◷'], ['profile', 'Mi perfil', '◉']]
-  return <main className="portal"><aside className="sidebar"><Brand short /><p>{role === 'admin' ? 'ADMINISTRADOR' : role === 'professional' ? 'PROFESIONAL' : 'USUARIO'}</p><nav>{nav.map(([id, label, icon]) => <button key={id} className={tab === id ? 'active' : ''} type="button" onClick={() => { setTab(id); clearNotice() }}><i>{icon}</i><span>{label}</span></button>)}</nav><div className="account"><span>{session?.name?.split(' ').map((part) => part[0]).join('').slice(0, 2)}</span><p><b>{session?.name}</b><small>{role === 'admin' ? 'Administrador' : role === 'professional' ? 'Profesional' : 'Usuario'}</small></p></div><button className="logout" type="button" onClick={logout}>↪ <span>Cerrar sesión</span></button></aside><section className="portal-main"><header className="portal-header"><div><p>Portal de Bienestar / {role === 'admin' ? 'Administrador' : role === 'professional' ? 'Profesional' : 'Usuario'}</p><h1>{titleFor(role, tab)}</h1></div><div><button className="bell" type="button">♧<i /></button><span>Octubre 2026</span></div></header><Alert notice={notice} />{role === 'user' && <UserDashboard {...props} />}{role === 'professional' && <ProfessionalDashboard {...props} />}{role === 'admin' && <AdminDashboard {...props} />}</section></main>
+  const { role, session, tab, setTab, logout, notice, clearNotice, openedAt, adminPhoto } = props
+  const nav = role === 'admin' ? [['summary', 'Resumen', '▦'], ['appointments', 'Agenda', '▣'], ['professionals', 'Profesionales', '◉'], ['patients', 'Pacientes', '☷'], ['reports', 'Seguimiento', '▤'], ['security', 'Seguridad', '⌾']] : role === 'professional' ? [['summary', 'Mi agenda', '▣'], ['activity', 'Actualizar atención', '✓'], ['availability', 'Disponibilidad', '◷']] : [['summary', 'Mi resumen', '▦'], ['book', 'Agendar cita', '▣'], ['history', 'Mis citas', '◷'], ['profile', 'Mi perfil', '◉']]
+  const fechaActual = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Bogota' }).format(openedAt)
+  return <main className="portal"><aside className="sidebar"><Brand short /><p>{role === 'admin' ? 'ADMINISTRADOR' : role === 'professional' ? 'PROFESIONAL' : 'USUARIO'}</p><nav>{nav.map(([id, label, icon]) => <button key={id} className={tab === id ? 'active' : ''} type="button" onClick={() => { setTab(id); clearNotice() }}><i>{icon}</i><span>{label}</span></button>)}</nav><button className="account" type="button" onClick={() => role === 'admin' && setTab('security')} title="Abrir seguridad de cuenta"><Avatar name={session?.name || 'Usuario'} src={role === 'admin' ? adminPhoto : ''} /><p><b>{session?.name}</b><small>{role === 'admin' ? 'Seguridad de cuenta' : role === 'professional' ? 'Profesional' : 'Usuario'}</small></p></button><button className="logout" type="button" onClick={logout}>↪ <span>Cerrar sesión</span></button></aside><section className="portal-main"><header className="portal-header"><div><p>Portal de Bienestar / {role === 'admin' ? 'Administrador' : role === 'professional' ? 'Profesional' : 'Usuario'}</p><h1>{titleFor(role, tab)}</h1></div><div><span>{fechaActual}</span></div></header><Alert notice={notice} />{role === 'user' && <UserDashboard {...props} />}{role === 'professional' && <ProfessionalDashboard {...props} />}{role === 'admin' && <AdminDashboard {...props} />}</section></main>
 }
-function titleFor(role, tab) { return ({ user: { summary: 'Hola, Camila', book: 'Agenda tu cita', history: 'Mis citas', profile: 'Mi perfil' }, professional: { summary: 'Mi agenda de hoy', activity: 'Actualizar atención', availability: 'Disponibilidad' }, admin: { summary: 'Resumen general', professionals: 'Profesionales', appointments: 'Gestión de citas', payments: 'Gestión de aportes', reports: 'Reportes y seguimiento' } })[role][tab] }
+function titleFor(role, tab) { return ({ user: { summary: 'Hola, Camila', book: 'Agenda tu cita', history: 'Mis citas', profile: 'Mi perfil' }, professional: { summary: 'Mi agenda de hoy', activity: 'Actualizar atención', availability: 'Disponibilidad' }, admin: { summary: 'Resumen general', professionals: 'Profesionales', appointments: 'Gestión de citas', patients: 'Pacientes', reports: 'Reportes y seguimiento', security: 'Seguridad de cuenta' } })[role][tab] }
 
 function UserDashboard({ tab, appointments, contribution, profileType, setProfileType, slot, setSlot, bookingStep, setBookingStep, reference, setReference, reportPayment }) {
   if (tab === 'book') return <Booking contribution={contribution} profileType={profileType} setProfileType={setProfileType} slot={slot} setSlot={setSlot} step={bookingStep} setStep={setBookingStep} reference={reference} setReference={setReference} reportPayment={reportPayment} />
@@ -234,19 +244,126 @@ function ProfessionalDashboard({ tab, appointments, setAppointmentStatus }) {
 }
 function Agenda({ items, actions, itemAction }) { return <div className="agenda">{items.map((item) => <article key={item.id}><div><strong>{item.time}</strong><p><b>Paciente {item.code}</b><small>{item.date} · {item.room}</small></p></div><Status>{item.status}</Status>{actions ? <span className="agenda-actions"><button type="button" onClick={() => itemAction(item.id, 'Atendida')}>Marcar atendida</button><button type="button" onClick={() => itemAction(item.id, 'No asistió')}>No asistió</button></span> : <Button className="soft" type="button">Ver estado</Button>}</article>)}</div> }
 
-function AdminDashboard({ tab, appointments, professionals, addProfessional, approvePayment, setAppointmentStatus, approvedTotal }) {
-  if (tab === 'professionals') return <div className="admin-grid"><Card title="Profesionales activos" text="Administra perfiles, estado y horario de atención." badge={`${professionals.length} activos`}><div className="people">{professionals.map((person) => <article key={person.id}><i>{person.name.split(' ').slice(1).map((word) => word[0]).join('').slice(0, 2)}</i><p><b>{person.name}</b><small>{person.area}</small><small>{person.hours}</small></p><Status>Activo</Status></article>)}</div></Card><form className="card pro-form" onSubmit={addProfessional}><p className="eyebrow">NUEVO PERFIL</p><h2>Registrar profesional</h2><p>Solo el administrador puede crear perfiles de profesionales.</p><Field label="Nombre completo" required><input name="fullName" placeholder="Nombre y apellido" required /></Field><Field label="Área de atención" required><input name="area" placeholder="Ej. Psicología clínica" required /></Field><Field label="Horario inicial"><input name="hours" placeholder="Ej. Lun - Vie · 8:00 a. m. - 4:00 p. m." /></Field><Button className="dark full" type="submit">＋ Crear perfil</Button></form></div>
-  if (tab === 'appointments') return <Card title="Supervisa la agenda institucional" text="Modifica o cancela las solicitudes cuando sea necesario."><Table items={appointments} admin setAppointmentStatus={setAppointmentStatus} /></Card>
-  if (tab === 'payments') { const pending = appointments.filter((item) => item.payment === 'Reportado'); return <Card title="Pagos reportados" text="Compara el número de aprobación con la plataforma financiera antes de confirmar la cita." badge={`${pending.length} pendientes`}><Alert notice={{ tone: 'warning', text: 'El QR mostrado al usuario es una demostración. Configura el QR de comercio Bre-B real antes de recibir pagos.' }} /><div className="payments">{pending.length ? pending.map((item) => <article key={item.id}><p><b>{item.patient}</b><small>{item.id} · {item.date} · {item.time}</small></p><p><b>{money(item.amount)}</b><small>Aprobación: {item.reference}</small></p><Button className="dark" type="button" onClick={() => approvePayment(item.id)}>Validar aporte ✓</Button></article>) : <Empty title="No hay aportes pendientes" text="Los pagos reportados por los usuarios aparecerán aquí para validación." />}</div></Card> }
-  if (tab === 'reports') return <div className="reports"><Card extra="chart-card" title="Indicadores del periodo"><div className="bars">{[52,72,44,88,65,78].map((height, index) => <i key={index} style={{ height: `${height}%` }} />)}</div><div className="months"><span>May</span><span>Jun</span><span>Jul</span><span>Ago</span><span>Sep</span><span>Oct</span></div></Card><Card extra="followup" title="Seguimiento requerido" text="3 usuarios llevan más de 60 días sin solicitar una nueva cita."><Button className="soft" type="button">Ver usuarios</Button></Card><Card title="Resumen administrativo"><div className="details"><Detail label="Aportes aprobados" value={money(approvedTotal)} /><Detail label="Citas atendidas" value={String(appointments.filter((item) => item.status === 'Atendida').length)} /><Detail label="Citas por validar" value={String(appointments.filter((item) => item.payment === 'Reportado').length)} /></div></Card></div>
-  return <><section className="welcome purple"><div><p>Control administrativo</p><h2>La información clave, en un solo lugar.</h2><span>Gestiona profesionales, citas, aportes y seguimientos desde el portal.</span></div><i>▤</i></section><div className="stats four"><Stat icon="▣" label="Citas del periodo" value={String(appointments.length + 21)} text="4 programadas para hoy" /><Stat icon="◇" label="Aportes aprobados" value={money(approvedTotal)} text="En el periodo actual" /><Stat icon="◉" label="Profesionales" value={String(professionals.length)} text="Perfiles activos" /><Stat icon="♧" label="Seguimientos" value="3" text="Requieren contacto" /></div><div className="columns"><Card title="Aportes por validar" text="Recientes">{appointments.filter((item) => item.payment === 'Reportado').map((item) => <Mini key={item.id} icon="◇" first={item.patient} second={`${item.reference} · ${money(item.amount)}`} badge="Reportado" />)}</Card><Card title="Próximas citas" text="Agenda">{appointments.slice(0, 3).map((item) => <Mini key={item.id} icon={item.time.slice(0, 2)} first={item.patient} second={item.professional} badge={item.status} />)}</Card></div></>
+function AdminDashboard({ tab, appointments, professionals, addProfessional, setProfessionals, setAppointmentStatus, adminPhoto, setAdminPhoto }) {
+  const [semana, setSemana] = useState('Actual')
+  const [filtroPaciente, setFiltroPaciente] = useState('')
+  const activos = professionals.filter((p) => p.active !== false)
+  const ordenadas = [...appointments].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`, 'es'))
+  const alternarProfesional = (id) => setProfessionals((current) => current.map((p) => p.id === id ? { ...p, active: !p.active } : p))
+  async function cambiarFoto(id, file) {
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) return window.alert('Usa JPG, PNG o WEBP de máximo 2 MB.')
+    const photo = await readImageAsDataUrl(file)
+    setProfessionals((current) => {
+      const next = current.map((person) => person.id === id ? { ...person, photo } : person)
+      localStorage.setItem('bienestar_professional_photos', JSON.stringify(next))
+      return next
+    })
+  }
+  if (tab === 'professionals') return <div className="admin-grid"><Card title="Profesionales activos y próximos" text="Consulta quién atiende hoy; agrega una foto para identificar al equipo." badge={`${activos.length} activos`}><div className="week-tabs">{['Anterior','Actual','Siguiente'].map((x) => <button className={semana === x ? 'selected' : ''} type="button" key={x} onClick={() => setSemana(x)}>Semana {x.toLowerCase()}</button>)}</div><p className="ayuda">Horario de la semana {semana.toLowerCase()}: cada bloque indica atención y descanso programado.</p><div className="people">{professionals.map((person) => <article key={person.id}><Avatar name={person.name} src={person.photo} /><p><b>{person.name}</b><small>{person.area}</small><small>{person.schedule || person.hours}</small><label className="photo-picker">Agregar foto<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => cambiarFoto(person.id, e.target.files?.[0])} /></label></p><div><Status>{person.active === false ? 'Inactivo' : 'Activo'}</Status><button className="link-action" type="button" onClick={() => alternarProfesional(person.id)}>{person.active === false ? 'Activar' : 'Desactivar'}</button></div></article>)}</div></Card><form className="card pro-form" onSubmit={addProfessional}><p className="eyebrow">NUEVO PERFIL</p><h2>Registrar profesional</h2><p>Crea sus credenciales iniciales. La persona podrá cambiarlas después desde su cuenta.</p><Field label="Nombre completo" required><input name="fullName" placeholder="Nombre y apellido" required /></Field><Field label="Usuario inicial" required><input name="username" placeholder="Ej. vrojas" required /></Field><Field label="Contraseña temporal" required><input name="password" type="password" minLength="8" placeholder="Mínimo 8 caracteres" required /></Field><Button className="dark full" type="submit">＋ Crear profesional</Button></form><Card title="Asignar horario semanal" text="Marca si atiende cada día. Si atiende, registra horario y descanso."><WeeklySchedule professionals={activos} /></Card></div>
+  if (tab === 'appointments') return <><Card title="Supervisa la agenda institucional" text="Las citas se muestran de la más próxima a la más lejana. Al cancelar, confirma la acción y comunícala al paciente."><Table items={ordenadas} admin setAppointmentStatus={setAppointmentStatus} /></Card><Card title="Paciente y horario" text="Selecciona un paciente para revisar sus citas pasadas, programadas y consultorio."><select value={filtroPaciente} onChange={(e) => setFiltroPaciente(e.target.value)}><option value="">Selecciona un paciente</option>{appointments.map((a) => <option key={a.code} value={a.code}>{a.patient}</option>)}</select>{filtroPaciente && <Table items={appointments.filter((x) => x.code === filtroPaciente)} />}</Card></>
+  if (tab === 'patients') return <PatientDirectory appointments={appointments} professionals={activos} />
+  if (tab === 'reports') return <div className="reports"><Card extra="chart-card" title="Pacientes con menor frecuencia" text="Aparecen primero quienes llevan más de un mes sin asistir."><div className="alerta alerta-error">Prioridad: Camila R. y Santiago M. no han asistido en más de 30 días.</div>{appointments.map((a, i) => <Mini key={a.id} icon={String(i + 1)} first={a.patient} second={i < 2 ? 'Más de 30 días sin asistencia' : 'Asistencia frecuente'} badge={i < 2 ? 'Contactar' : 'Al día'} />)}</Card><Card extra="followup" title="Cambio de profesional" text="Elige el nuevo profesional y confirma el cambio."><Mini icon="CR" first="Camila R." second="Solicitud pendiente" badge="Pendiente" /><select><option>Selecciona profesional</option>{activos.map((p) => <option key={p.id}>{p.name}</option>)}</select><Button className="dark full" type="button" onClick={() => window.alert('Cambio registrado en esta demostración.')}>Asignar profesional</Button></Card></div>
+  if (tab === 'security') return <SecureAdminSettings adminPhoto={adminPhoto} setAdminPhoto={setAdminPhoto} />
+  return <><section className="welcome purple"><div><p>Control administrativo</p><h2>La información clave, en un solo lugar.</h2><span>Usa los accesos rápidos y revisa la disponibilidad del equipo.</span></div><i>▤</i></section><div className="stats four"><Stat icon="▣" label="Citas programadas" value={String(appointments.filter((x) => x.status !== 'Cancelada').length)} text="Ordenadas para gestión" /><Stat icon="◉" label="Profesionales" value={String(activos.length)} text="Perfiles activos" /><Stat icon="♧" label="Seguimientos" value="3" text="Requieren contacto" /><Stat icon="✓" label="Atendidas" value={String(appointments.filter((x) => x.status === 'Atendida').length)} text="Durante el periodo" /></div><div className="columns"><Card title="Agenda del día" text="Quién está atendiendo y quién sigue">{activos.map((p, i) => <Mini key={p.id} icon={i === 0 ? 'Ahora' : 'Sigue'} first={p.name} second={i === 0 ? 'Atiende hasta las 4:00 p. m.' : 'Ingresa a las 9:00 a. m.'} badge={i === 0 ? 'En atención' : 'Próximo'} />)}</Card><Card title="Próximas citas" text="Agenda">{ordenadas.slice(0, 3).map((item) => <Mini key={item.id} icon={item.time.slice(0, 2)} first={item.patient} second={`${item.professional} · ${item.room}`} badge={item.status} />)}</Card></div></>
+}
+
+function WeeklySchedule({ professionals }) { const days = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo']; const [on, setOn] = useState({ Lunes:true, Martes:true, Miércoles:true, Jueves:true, Viernes:true }); return <div className="weekly-schedule"><select><option>Selecciona profesional</option>{professionals.map((p) => <option key={p.id}>{p.name}</option>)}</select>{days.map((day) => <label className="day-row" key={day}><input type="checkbox" checked={!!on[day]} onChange={(e) => setOn((v) => ({ ...v, [day]: e.target.checked }))} /> <b>{day}</b>{on[day] && <><input type="time" defaultValue="08:00" /><span>a</span><input type="time" defaultValue="16:00" /><select defaultValue="60"><option value="0">Sin descanso</option><option value="30">Descanso 30 min</option><option value="60">Descanso 1 hora</option></select></>}</label>)}<Button className="dark" type="button" onClick={() => window.alert('Horario guardado en la demostración.')}>Guardar horario</Button></div> }
+
+function PatientDirectory({ appointments, professionals }) {
+  const [selected, setSelected] = useState(appointments[0]?.code || '')
+  const patientAppointments = appointments.filter((item) => item.code === selected)
+  const patient = patientAppointments[0]
+  return <div className="admin-grid"><Card title="Directorio de pacientes" text="Busca una persona y revisa rápidamente su agenda y profesional asignado."><label className="patient-picker">Paciente<select value={selected} onChange={(e) => setSelected(e.target.value)}>{appointments.map((item) => <option key={item.code} value={item.code}>{item.patient} · {item.code}</option>)}</select></label>{patient && <div className="patient-summary"><div><b>{patient.patient}</b><span>{patient.phone}</span></div><div><b>Profesional</b><span>{patient.professional}</span></div><div><b>Consultorio</b><span>{patient.room}</span></div></div>}<p className="ayuda">Use la pestaña Agenda para cancelar o modificar el estado de una cita.</p></Card><Card title="Historial y citas programadas" text="Las citas se separan para que sea más fácil atender cada caso."><h3>Próximas</h3><Table items={patientAppointments.filter((item) => !['Atendida','Cancelada','No asistió'].includes(item.status))} /><h3>Historial</h3><Table items={patientAppointments.filter((item) => ['Atendida','Cancelada','No asistió'].includes(item.status))} /></Card><Card title="Reasignar profesional" text="Selecciona un profesional activo; confirma con el paciente antes de guardar."><select><option>Selecciona profesional</option>{professionals.map((person) => <option key={person.id}>{person.name}</option>)}</select><Button className="dark" type="button" onClick={() => window.alert('Reasignación preparada. En producción se guarda tras confirmar al paciente.')}>Preparar reasignación</Button></Card></div>
+}
+
+function SecureAdminSettings({ adminPhoto, setAdminPhoto }) {
+  const [account, setAccount] = useState({ name: 'Laura Mendoza', email: 'laura@uniminuto.edu.co', phone: '300 000 0000', username: 'laura.mendoza' })
+  const [draft, setDraft] = useState(account)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [verificationCode, setVerificationCode] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    if (!supabase) return
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return
+      const { data: profile } = await supabase.from('perfiles').select('nombre_completo,correo,telefono,usuario').eq('id', data.user.id).single()
+      if (!profile) return
+      const next = { name: profile.nombre_completo || '', email: profile.correo || data.user.email || '', phone: profile.telefono || '', username: profile.usuario || '' }
+      setAccount(next); setDraft(next)
+    })
+  }, [])
+  const emailChanged = draft.email !== account.email
+  const phoneChanged = draft.phone !== account.phone
+  const profileChanged = emailChanged || phoneChanged || draft.name !== account.name || draft.username !== account.username
+  async function saveProfile() {
+    if (!supabase) return setError('Configura Supabase para guardar los datos.')
+    if (!profileChanged) return setError('No hay cambios para guardar.')
+    if (!currentPassword) return setError('Escribe tu contraseña actual para guardar los datos.')
+    setBusy(true); setError('')
+    const { data, error: invokeError } = await supabase.functions.invoke('admin-account-security', { body: { action: 'profile', password: currentPassword, ...draft } })
+    setBusy(false)
+    if (invokeError || data?.error) return setError(data?.error || invokeError.message)
+    setAccount(draft); setCurrentPassword(''); setMessage('Datos actualizados correctamente.')
+  }
+  async function requestPasswordCode() {
+    if (!supabase) return setError('Configura Supabase para solicitar el código.')
+    setBusy(true); setError('')
+    const { error: requestError } = await supabase.auth.reauthenticate()
+    setBusy(false)
+    if (requestError) return setError(requestError.message)
+    setMessage('Enviamos un código de 8 dígitos a tu correo. Vence en 5 minutos.')
+  }
+  async function changePassword() {
+    if (verificationCode.length !== 8) return setError('Escribe los 8 dígitos completos del código de verificación.')
+    if (newPassword.length < 8) return setError('La nueva contraseña debe tener al menos 8 caracteres.')
+    if (newPassword !== confirmPassword) return setError('Las contraseñas nuevas no coinciden.')
+    setBusy(true); setError('')
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword, nonce: verificationCode })
+    setBusy(false)
+    if (updateError) {
+      const details = `${updateError.code || ''} ${updateError.message || ''}`.toLowerCase()
+      if (details.includes('expired') || details.includes('otp_expired')) return setError('El código expiró. Solicita uno nuevo; cada código vence en 5 minutos.')
+      if (details.includes('reauthentication_not_valid') || details.includes('nonce') || details.includes('invalid')) return setError('El código es incorrecto. Verifica los 8 dígitos o solicita uno nuevo.')
+      return setError(updateError.message)
+    }
+    setNewPassword(''); setConfirmPassword(''); setVerificationCode(''); setMessage('Contraseña actualizada correctamente.')
+  }
+  async function seleccionarFoto(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) { setError('Usa JPG, PNG o WEBP de máximo 2 MB.'); return }
+    const localPreview = await readImageAsDataUrl(file)
+    setAdminPhoto(localPreview)
+    localStorage.setItem('bienestar_admin_photo', localPreview)
+    if (!supabase) { setMessage('Foto de administrador guardada en este dispositivo.'); return }
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) { setMessage('Foto de administrador guardada en este dispositivo.'); return }
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const path = `${data.user.id}/perfil.${extension}`
+      const { error: uploadError } = await supabase.storage.from('fotos-perfil').upload(path, file, { upsert: true, contentType: file.type })
+      if (uploadError) throw uploadError
+      const { error: profileError } = await supabase.from('perfiles').update({ foto_perfil_path: path }).eq('id', data.user.id)
+      if (profileError) throw profileError
+      const { data: signed, error: signedError } = await supabase.storage.from('fotos-perfil').createSignedUrl(path, 60 * 60)
+      if (signedError) throw signedError
+      setAdminPhoto(signed.signedUrl); setMessage('Foto de administrador guardada correctamente.')
+    }).catch((uploadError) => { setAdminPhoto(localPreview); setError(uploadError.message || 'No se pudo guardar la foto en el servidor.') })
+  }
+  const closeFeedback = () => { setError(''); setMessage('') }
+  return <>{(error || message) && <FeedbackModal tone={error ? 'error' : 'success'} onClose={closeFeedback}>{error || message}</FeedbackModal>}<div className="security-layout"><Card title="Datos del perfil" text="Para guardar cualquier cambio, confirma primero tu contraseña actual."><div className="admin-photo-editor"><Avatar name={account.name} src={adminPhoto} className="avatar-large" /><label className="photo-picker">Agregar o cambiar foto<input type="file" accept="image/jpeg,image/png,image/webp" onChange={seleccionarFoto} /></label><small>JPG, PNG o WEBP · máximo 2 MB.</small></div><div className="profile-edit"><Field label="Nombre"><input value={draft.name} maxLength="120" onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></Field><Field label="Usuario"><input value={draft.username} minLength="3" maxLength="32" pattern="[A-Za-z0-9._-]+" onChange={(e) => setDraft({ ...draft, username: e.target.value })} /><small>3–32 caracteres: letras, números, punto, guion o guion bajo.</small></Field><Field label="Correo electrónico"><input type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} /></Field><Field label="Teléfono"><input value={draft.phone} inputMode="tel" pattern="\\+[1-9][0-9]{7,14}" onChange={(e) => setDraft({ ...draft, phone: e.target.value })} placeholder="Ej. +573001234567" /><small>Usa formato internacional con +.</small></Field><Field label="Contraseña actual"><input type="password" autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Necesaria para guardar cambios" /></Field></div><Button className="dark" type="button" disabled={busy || !profileChanged} onClick={saveProfile}>{busy ? 'Guardando…' : 'Guardar datos'}</Button></Card><Card title="Cambiar contraseña" text="Solicita el código y escríbelo junto con tu nueva contraseña."><div className="verification password-change"><p><b>Código de verificación</b><br />Son <strong>8 dígitos</strong> enviados al correo de la cuenta. El código vence en <strong>5 minutos</strong>.</p><input className="code-input" value={verificationCode} maxLength="8" inputMode="numeric" onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))} placeholder="00000000" aria-label="Código de verificación de 8 dígitos" /><label className="password-field"><input type={showNewPassword ? 'text' : 'password'} minLength="8" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Nueva contraseña" /><button type="button" aria-label={showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setShowNewPassword((value) => !value)}>{showNewPassword ? '◉' : '◌'}</button></label><small className="password-help">Mínimo 8 caracteres. No se permiten contraseñas de 4 caracteres por seguridad.</small><label className="password-field"><input type={showConfirmPassword ? 'text' : 'password'} minLength="8" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repite la nueva contraseña" /><button type="button" aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setShowConfirmPassword((value) => !value)}>{showConfirmPassword ? '◉' : '◌'}</button></label><Button className="dark" type="button" disabled={busy} onClick={requestPasswordCode}>{busy ? 'Enviando…' : 'Enviar / reenviar código'}</Button><Button className="dark" type="button" disabled={busy || verificationCode.length !== 8} onClick={changePassword}>{busy ? 'Guardando…' : 'Cambiar contraseña'}</Button></div></Card></div></>
 }
 
 function Card({ title, text, badge, children, extra = '' }) { return <section className={`card ${extra}`}><header>{text && <p className="eyebrow">{text}</p>}<div><h2>{title}</h2>{badge && <Status>{badge}</Status>}</div></header>{children}</section> }
 function Stat({ icon, label, value, text }) { return <article className="stat"><i>{icon}</i><p>{label}</p><b>{value}</b><small>{text}</small></article> }
 function Detail({ label, value }) { return <p className="detail"><span>{label}</span><b>{value}</b></p> }
 function Mini({ icon, first, second, badge }) { return <article className="mini"><i>{icon}</i><p><b>{first}</b><small>{second}</small></p><Status>{badge}</Status></article> }
-function Empty({ title, text }) { return <div className="empty"><i>◇</i><b>{title}</b><small>{text}</small></div> }
 function Table({ items, admin, setAppointmentStatus }) { const data = items.length ? items : [{ id: 'Sin citas', patient: '—', professional: '—', date: '—', time: '', room: '', status: 'Sin registros', payment: '' }]; return <div className="table"><table><thead><tr><th>{admin ? 'Usuario' : 'Cita'}</th><th>Fecha y hora</th><th>Profesional</th><th>Estado</th>{admin && <th>Acción</th>}</tr></thead><tbody>{data.map((item) => <tr key={item.id}><td><b>{admin ? item.patient : item.id}</b><small>{admin ? item.id : `Aporte: ${item.payment}`}</small></td><td>{item.date}<small>{item.time}</small></td><td>{item.professional}<small>{item.room}</small></td><td><Status>{item.status}</Status></td>{admin && <td><select defaultValue="" onChange={(event) => event.target.value && setAppointmentStatus(item.id, event.target.value)}><option value="" disabled>Gestionar</option><option>Confirmada</option><option>Cancelada</option><option>Atendida</option><option>No asistió</option></select></td>}</tr>)}</tbody></table></div> }
 
 export default App
