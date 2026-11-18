@@ -395,14 +395,86 @@ function ChatAssistant() {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [messages, setMessages] = useState([{ from: 'bot', text: 'Hola, soy el asistente de Bienestar. Puedo orientarte sobre citas, pagos y acceso al portal.' }])
-  const answer = (message) => {
-    const value = message.toLowerCase()
-    if (value.includes('cita') || value.includes('agenda') || value.includes('horario')) return 'Para solicitar una cita, ingresa al portal y selecciona “Agendar cita”. Allí podrás elegir el horario disponible que prefieras.'
-    if (value.includes('pago') || value.includes('aporte') || value.includes('bre')) return 'El aporte se reporta al finalizar la selección de horario. Conserva el número de aprobación de Bre-B para completar el registro.'
-    if (value.includes('contraseña') || value.includes('acceso') || value.includes('ingresar')) return 'Usa el correo con el que te registraste para ingresar. Si todavía no tienes cuenta, selecciona “Crear cuenta” desde la página principal.'
-    if (value.includes('urgencia') || value.includes('emergencia') || value.includes('crisis')) return 'Si estás en una emergencia o sientes que podrías hacerte daño, busca ayuda inmediata: comunícate con la línea de emergencias de tu localidad o acude al servicio de urgencias más cercano. Este chat no reemplaza la atención profesional de emergencia.'
-    return 'Gracias por escribirnos. Puedo ayudarte con agendamiento, aportes, acceso al portal o información general del servicio.'
+  
+
+const answer = (message) => {
+  const value = message.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+  if (value.includes('emergencia') || value.includes('crisis') || value.includes('urgencia') || value.includes('hacerme dano')) {
+    return 'Si estás en una emergencia o sientes que podrías hacerte daño, busca ayuda inmediata: comunícate con la línea de emergencias de tu localidad o acude al servicio de urgencias más cercano. Este chat no reemplaza la atención profesional de emergencia.'
   }
+
+  if (value.includes('aporte') || value.includes('cuanto debo aportar') || value.includes('contribucion')) {
+    return 'Los aportes institucionales son: $5.000 para estudiantes con correo institucional de UNIMINUTO verificado y $12.000 para los demás usuarios. Puedes consultar el valor que te corresponde en Mi resumen de tu espacio personal.'
+  }
+  if (
+  value.includes('pago aprobado') ||
+  value.includes('aprobaron mi pago') ||
+  value.includes('estado de mi pago') ||
+  value.includes('mi pago fue aprobado')
+) {
+  return 'Puedes consultar el estado de tu pago en la sección Mis citas. Si tu comprobante está en revisión, debes esperar a que el administrador lo verifique. Cuando sea aprobado, podrás ver el estado actualizado de tu pago.'
+}
+
+  if (value.includes('pago') || value.includes('nequi') || value.includes('comprobante') || value.includes('transferencia') || value.includes('bre-b')) {
+    return 'Para pagar una cita, ingresa a Mis citas y abre la opción Pagar con Nequi. Realiza la transferencia al número indicado, escribe la referencia de la transacción y adjunta el comprobante. El administrador revisará el pago antes de aprobarlo.'
+  }
+
+  if (value.includes('no hay horarios') || value.includes('no aparecen horarios') || value.includes('no me aparecen horarios') || value.includes('no encuentro horarios') || value.includes('sin horarios')) {
+    return 'Si no aparecen horarios disponibles, puede ser porque todavía no hay un profesional asignado o su agenda no está configurada. Comunícate con el equipo administrador para que revise la asignación del profesional y la disponibilidad del servicio.'
+  }
+
+  if (
+  value.includes('cancelar') ||
+  value.includes('cancelo') ||
+  value.includes('cancelacion') ||
+  value.includes('reprogramar') ||
+  value.includes('cambiar cita')
+) {
+    return 'Entra a Mis citas. Allí puedes consultar tus solicitudes y, cuando se cumplan las condiciones permitidas, cancelar o reprogramar una cita.'
+  }
+  if (
+  value.includes('crear cuenta') ||
+  value.includes('crear una cuenta') ||
+  value.includes('registrarme') ||
+  value.includes('registrar') ||
+  value.includes('como me registro') ||
+  value.includes('como puedo registrarme')
+) {
+  return 'Para crear una cuenta, ingresa a la página principal y selecciona Crear cuenta. Completa el formulario con tus datos, registra tu correo electrónico y contraseña y sigue las instrucciones para verificar tu correo.'
+}
+if (
+  value.includes('olvide mi contrasena') ||
+  value.includes('olvide la contrasena') ||
+  value.includes('recuperar contrasena') ||
+  value.includes('restablecer contrasena')
+) {
+  return 'Si olvidaste tu contraseña, utiliza la opción de recuperación de contraseña en la pantalla de inicio de sesión. Sigue las instrucciones que recibirás en tu correo electrónico para crear una nueva contraseña.'
+}
+  if (value.includes('contrasena') || value.includes('acceso') || value.includes('ingresar') || value.includes('iniciar sesion')) {
+    return 'Para ingresar, utiliza el correo electrónico y la contraseña con los que te registraste. Si todavía no tienes una cuenta, selecciona Crear cuenta desde la página principal.'
+  }
+
+  if (value.includes('profesional') || value.includes('psicologo') || value.includes('psicologa')) {
+    return 'La asignación del profesional depende de la disponibilidad y configuración del servicio. Si no aparecen horarios, el equipo administrador debe revisar la asignación y la agenda.'
+  }
+  if (
+  value.includes('estado de mi cita') ||
+  value.includes('como va mi cita') ||
+  value.includes('estado de la cita') ||
+  value.includes('mi solicitud')
+) {
+  return 'Para consultar el estado de tu cita, ingresa a tu espacio personal y selecciona Mis citas. Allí podrás revisar tus solicitudes, fechas, horarios y el estado de cada cita.'
+}
+
+  if (value.includes('cita') || value.includes('agenda') || value.includes('horario')) {
+    return 'Para solicitar una cita, ingresa a Agendar cita, selecciona el servicio, la fecha y un horario disponible. Después envía tu solicitud. El equipo revisará la disponibilidad y te indicará cómo continuar.'
+  }
+
+  return '¡Con gusto te ayudo! Puedo orientarte sobre aportes institucionales, pagos de citas, agendamiento, cancelaciones, profesionales y acceso al portal. Cuéntame qué necesitas.'
+}
+
+
   const send = (message) => {
     const clean = message.trim()
     if (!clean) return

@@ -277,6 +277,28 @@ supabase
   </div>
 </section>}
 
+{vista === 'resumen' && (
+  <section className="panel-seccion">
+    <h2>Mi aporte institucional</h2>
+    <div className="lista-tarjetas">
+      <article className="panel-tarjeta">
+        <span className="etiqueta">APORTE CORRESPONDIENTE</span>
+        <h3>
+          {cargando
+            ? 'Calculando...'
+            : aporte !== null
+              ? formatoCOP(aporte)
+              : 'Valor no disponible'}
+        </h3>
+        <p className="ayuda">
+          Valor asignado según tu tipo de usuario y validación estudiantil.
+        </p>
+      </article>
+    </div>
+  </section>
+)}
+
+
       {vista === 'mis-citas' && <section className="panel-seccion">
         <h2>Solicitudes y citas</h2>
         {bonos.length > 0 && <section className="panel-tarjeta"><h2>Bonos disponibles</h2>{bonos.map((bono) => <p key={bono.id}>{formatoCOP(bono.valor_cop)} · {bono.motivo} · {formatoFecha(bono.creado_en)}</p>)}</section>}
