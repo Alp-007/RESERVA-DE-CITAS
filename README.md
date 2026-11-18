@@ -36,10 +36,24 @@ Consulta [los pendientes para publicar](docs/pendientes-lanzamiento.md) antes de
 - `supabase/seed.sql`: servicio de demostración y ejemplo de datos para desarrollo.
 - `supabase/consultas.sql`: consultas de control y ejemplos de administración.
 - `src/supabase.js`: cliente; permanece desactivado si faltan las variables para que la vista pública no quede en blanco.
+- `supabase/functions/admin-account-security`: Edge Function para verificar cambios de correo/teléfono de administradores.
 - `docs/modelo-er-relacional.md`: diagrama ER y esquema relacional.
 - `docs/api.md`: recursos REST, permisos y ejemplos del SDK.
 
 Supabase genera los endpoints REST `/rest/v1` para las tablas. Las políticas se aplican a cada solicitud autenticada. No se expone una clave `service_role` en el cliente.
+
+### Seguridad de la cuenta administradora
+
+Ejecuta también la migración `202611170001_seguridad_cuenta_admin.sql`. Después despliega la función y configura los secretos exclusivamente en Supabase:
+
+```powershell
+supabase functions deploy admin-account-security
+supabase secrets set ADMIN_INITIAL_SETUP_CODE=123456
+supabase secrets set RESEND_API_KEY=... RESEND_FROM_EMAIL="Bienestar <seguridad@tu-dominio.edu>"
+supabase secrets set TWILIO_ACCOUNT_SID=... TWILIO_AUTH_TOKEN=... TWILIO_FROM_NUMBER=+1...
+```
+
+La función exige una sesión de administrador. Para editar sus datos pide la contraseña actual. Para cambiar la contraseña envía un código al correo actual; el código se guarda con hash, vence en 10 minutos y se bloquea tras cinco intentos. Configura Resend para enviar ese correo. Nunca agregues estas claves al archivo `.env` del frontend ni a variables `VITE_*`.
 
 ## Seguridad y pagos
 

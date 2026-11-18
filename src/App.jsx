@@ -16,8 +16,8 @@ const seedAppointments = [
 ]
 
 const seedProfessionals = [
-  { id: 'PRO-01', name: 'Ps. Valentina Rojas', area: 'Psicología clínica', hours: 'Lun - Vie · 8:00 a. m. - 4:00 p. m.', active: true, schedule: 'Lun 08–16 · Mar 08–16 · Mié descanso · Jue 08–16 · Vie 08–16' },
-  { id: 'PRO-02', name: 'Ps. Julián Torres', area: 'Orientación y bienestar', hours: 'Mar - Sáb · 9:00 a. m. - 5:00 p. m.', active: true, schedule: 'Mar 09–17 · Mié 09–17 · Jue 09–17 · Vie 09–17 · Sáb 09–17' },
+  { id: 'PRO-01', name: 'Ps. Valentina Rojas', area: 'Psicología clínica', hours: 'Lun - Vie · 8:00 a. m. - 4:00 p. m.', active: true, schedule: 'Lun 08–16 · Mar 08–16 · Mié descanso · Jue 08–16 · Vie 08–16', photo: '' },
+  { id: 'PRO-02', name: 'Ps. Julián Torres', area: 'Orientación y bienestar', hours: 'Mar - Sáb · 9:00 a. m. - 5:00 p. m.', active: true, schedule: 'Mar 09–17 · Mié 09–17 · Jue 09–17 · Vie 09–17 · Sáb 09–17', photo: '' },
 ]
 
 const money = (value) => new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(value)
@@ -29,7 +29,10 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [connection, setConnection] = useState('Conectando con el servicio...')
   const [appointments, setAppointments] = useState(seedAppointments)
-  const [professionals, setProfessionals] = useState(seedProfessionals)
+  const [professionals, setProfessionals] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('bienestar_professional_photos') || 'null') || seedProfessionals } catch { return seedProfessionals }
+  })
+  const [adminPhoto, setAdminPhoto] = useState(() => localStorage.getItem('bienestar_admin_photo') || '')
   const [tab, setTab] = useState('summary')
   const [slot, setSlot] = useState(null)
   const [bookingStep, setBookingStep] = useState('schedule')
@@ -139,13 +142,16 @@ function App() {
     {screen === 'home' && <><Header goHome={() => setScreen('home')} openLogin={() => { setNotice(null); setScreen('login') }} openRegister={() => { setNotice(null); setScreen('register') }} /><Home openLogin={() => setScreen('login')} openRegister={() => setScreen('register')} demo={() => enterDemo('user')} /></>}
     {screen === 'login' && <Login submit={handleLogin} notice={notice} loading={loading} home={() => setScreen('home')} register={() => { setNotice(null); setScreen('register') }} demo={enterDemo} />}
     {screen === 'register' && <Register todayMs={openedAt.getTime()} submit={handleRegister} notice={notice} loading={loading} home={() => setScreen('home')} login={() => { setNotice(null); setScreen('login') }} />}
-    {screen === 'portal' && <Portal openedAt={openedAt} role={role} session={session} tab={tab} setTab={setTab} logout={logout} notice={notice} clearNotice={() => setNotice(null)} appointments={appointments} professionals={professionals} setProfessionals={setProfessionals} contribution={contribution} profileType={profileType} setProfileType={setProfileType} slot={slot} setSlot={setSlot} bookingStep={bookingStep} setBookingStep={setBookingStep} reference={reference} setReference={setReference} reportPayment={reportPayment} approvePayment={approvePayment} setAppointmentStatus={setAppointmentStatus} addProfessional={addProfessional} approvedTotal={approvedTotal} />}
+    {screen === 'portal' && <Portal openedAt={openedAt} role={role} session={session} tab={tab} setTab={setTab} logout={logout} notice={notice} clearNotice={() => setNotice(null)} appointments={appointments} professionals={professionals} setProfessionals={setProfessionals} adminPhoto={adminPhoto} setAdminPhoto={setAdminPhoto} contribution={contribution} profileType={profileType} setProfileType={setProfileType} slot={slot} setSlot={setSlot} bookingStep={bookingStep} setBookingStep={setBookingStep} reference={reference} setReference={setReference} reportPayment={reportPayment} approvePayment={approvePayment} setAppointmentStatus={setAppointmentStatus} addProfessional={addProfessional} approvedTotal={approvedTotal} />}
     <ChatAssistant />
   </div>
 }
 
 function Mark() { return <span className="mark">M</span> }
 function Brand({ short = false }) { return <div className="brand"><Mark />{!short && <span><b>UNIMINUTO</b><small>Bienestar Universitario</small></span>}</div> }
+function Avatar({ name, src, className = '' }) { return src ? <img className={`avatar-image ${className}`} src={src} alt={`Foto de ${name}`} /> : <span className={`avatar-fallback ${className}`} aria-label={`Sin foto de ${name}`}>{name.split(' ').filter(Boolean).map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</span> }
+function FeedbackModal({ tone, children, onClose }) { return <div className="feedback-overlay" role="presentation"><section className={`feedback-modal ${tone}`} role="alertdialog" aria-modal="true" aria-label={tone === 'error' ? 'Error' : 'Confirmación'}><button type="button" className="feedback-close" onClick={onClose} aria-label="Cerrar mensaje">×</button><i aria-hidden="true">{tone === 'error' ? '!' : '✓'}</i><h2>{tone === 'error' ? 'Revisa la información' : 'Listo'}</h2><p>{children}</p><Button className="dark" type="button" onClick={onClose}>Entendido</Button></section></div> }
+function readImageAsDataUrl(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(reader.result); reader.onerror = () => reject(new Error('No se pudo leer la imagen.')); reader.readAsDataURL(file) }) }
 function Icon({ children }) { return <span className="icon" aria-hidden="true">{children}</span> }
 function Alert({ notice }) { return notice && <div className={`alert ${notice.tone}`} role="status"><Icon>{notice.tone === 'success' ? '✓' : '!'}</Icon><span>{notice.text}</span></div> }
 function Status({ children }) { return <span className={`status ${String(children).toLowerCase().replaceAll(' ', '-')}`}>{children}</span> }
@@ -206,10 +212,10 @@ function Register({ submit, notice, loading, home, login, todayMs }) {
 function Field({ label, required, wide, children }) { return <label className={`field ${wide ? 'wide' : ''}`}><span>{label}{required && <b> *</b>}</span>{children}</label> }
 
 function Portal(props) {
-  const { role, session, tab, setTab, logout, notice, clearNotice, openedAt } = props
+  const { role, session, tab, setTab, logout, notice, clearNotice, openedAt, adminPhoto } = props
   const nav = role === 'admin' ? [['summary', 'Resumen', '▦'], ['appointments', 'Agenda', '▣'], ['professionals', 'Profesionales', '◉'], ['patients', 'Pacientes', '☷'], ['reports', 'Seguimiento', '▤'], ['security', 'Seguridad', '⌾']] : role === 'professional' ? [['summary', 'Mi agenda', '▣'], ['activity', 'Actualizar atención', '✓'], ['availability', 'Disponibilidad', '◷']] : [['summary', 'Mi resumen', '▦'], ['book', 'Agendar cita', '▣'], ['history', 'Mis citas', '◷'], ['profile', 'Mi perfil', '◉']]
   const fechaActual = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Bogota' }).format(openedAt)
-  return <main className="portal"><aside className="sidebar"><Brand short /><p>{role === 'admin' ? 'ADMINISTRADOR' : role === 'professional' ? 'PROFESIONAL' : 'USUARIO'}</p><nav>{nav.map(([id, label, icon]) => <button key={id} className={tab === id ? 'active' : ''} type="button" onClick={() => { setTab(id); clearNotice() }}><i>{icon}</i><span>{label}</span></button>)}</nav><button className="account" type="button" onClick={() => role === 'admin' && setTab('security')} title="Abrir seguridad de cuenta"><span>{session?.name?.split(' ').map((part) => part[0]).join('').slice(0, 2)}</span><p><b>{session?.name}</b><small>{role === 'admin' ? 'Seguridad de cuenta' : role === 'professional' ? 'Profesional' : 'Usuario'}</small></p></button><button className="logout" type="button" onClick={logout}>↪ <span>Cerrar sesión</span></button></aside><section className="portal-main"><header className="portal-header"><div><p>Portal de Bienestar / {role === 'admin' ? 'Administrador' : role === 'professional' ? 'Profesional' : 'Usuario'}</p><h1>{titleFor(role, tab)}</h1></div><div><span>{fechaActual}</span></div></header><Alert notice={notice} />{role === 'user' && <UserDashboard {...props} />}{role === 'professional' && <ProfessionalDashboard {...props} />}{role === 'admin' && <AdminDashboard {...props} />}</section></main>
+  return <main className="portal"><aside className="sidebar"><Brand short /><p>{role === 'admin' ? 'ADMINISTRADOR' : role === 'professional' ? 'PROFESIONAL' : 'USUARIO'}</p><nav>{nav.map(([id, label, icon]) => <button key={id} className={tab === id ? 'active' : ''} type="button" onClick={() => { setTab(id); clearNotice() }}><i>{icon}</i><span>{label}</span></button>)}</nav><button className="account" type="button" onClick={() => role === 'admin' && setTab('security')} title="Abrir seguridad de cuenta"><Avatar name={session?.name || 'Usuario'} src={role === 'admin' ? adminPhoto : ''} /><p><b>{session?.name}</b><small>{role === 'admin' ? 'Seguridad de cuenta' : role === 'professional' ? 'Profesional' : 'Usuario'}</small></p></button><button className="logout" type="button" onClick={logout}>↪ <span>Cerrar sesión</span></button></aside><section className="portal-main"><header className="portal-header"><div><p>Portal de Bienestar / {role === 'admin' ? 'Administrador' : role === 'professional' ? 'Profesional' : 'Usuario'}</p><h1>{titleFor(role, tab)}</h1></div><div><span>{fechaActual}</span></div></header><Alert notice={notice} />{role === 'user' && <UserDashboard {...props} />}{role === 'professional' && <ProfessionalDashboard {...props} />}{role === 'admin' && <AdminDashboard {...props} />}</section></main>
 }
 function titleFor(role, tab) { return ({ user: { summary: 'Hola, Camila', book: 'Agenda tu cita', history: 'Mis citas', profile: 'Mi perfil' }, professional: { summary: 'Mi agenda de hoy', activity: 'Actualizar atención', availability: 'Disponibilidad' }, admin: { summary: 'Resumen general', professionals: 'Profesionales', appointments: 'Gestión de citas', patients: 'Pacientes', reports: 'Reportes y seguimiento', security: 'Seguridad de cuenta' } })[role][tab] }
 
@@ -238,17 +244,27 @@ function ProfessionalDashboard({ tab, appointments, setAppointmentStatus }) {
 }
 function Agenda({ items, actions, itemAction }) { return <div className="agenda">{items.map((item) => <article key={item.id}><div><strong>{item.time}</strong><p><b>Paciente {item.code}</b><small>{item.date} · {item.room}</small></p></div><Status>{item.status}</Status>{actions ? <span className="agenda-actions"><button type="button" onClick={() => itemAction(item.id, 'Atendida')}>Marcar atendida</button><button type="button" onClick={() => itemAction(item.id, 'No asistió')}>No asistió</button></span> : <Button className="soft" type="button">Ver estado</Button>}</article>)}</div> }
 
-function AdminDashboard({ tab, appointments, professionals, addProfessional, setProfessionals, setAppointmentStatus }) {
+function AdminDashboard({ tab, appointments, professionals, addProfessional, setProfessionals, setAppointmentStatus, adminPhoto, setAdminPhoto }) {
   const [semana, setSemana] = useState('Actual')
   const [filtroPaciente, setFiltroPaciente] = useState('')
   const activos = professionals.filter((p) => p.active !== false)
   const ordenadas = [...appointments].sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`, 'es'))
   const alternarProfesional = (id) => setProfessionals((current) => current.map((p) => p.id === id ? { ...p, active: !p.active } : p))
-  if (tab === 'professionals') return <div className="admin-grid"><Card title="Profesionales activos y próximos" text="Consulta quién atiende hoy; usa el control para desactivar perfiles que ya no pertenecen al servicio." badge={`${activos.length} activos`}><div className="week-tabs">{['Anterior','Actual','Siguiente'].map((x) => <button className={semana === x ? 'selected' : ''} type="button" key={x} onClick={() => setSemana(x)}>Semana {x.toLowerCase()}</button>)}</div><p className="ayuda">Horario de la semana {semana.toLowerCase()}: cada bloque indica atención y descanso programado.</p><div className="people">{professionals.map((person) => <article key={person.id}><i>{person.name.split(' ').slice(1).map((word) => word[0]).join('').slice(0, 2)}</i><p><b>{person.name}</b><small>{person.area}</small><small>{person.schedule || person.hours}</small></p><div><Status>{person.active === false ? 'Inactivo' : 'Activo'}</Status><button className="link-action" type="button" onClick={() => alternarProfesional(person.id)}>{person.active === false ? 'Activar' : 'Desactivar'}</button></div></article>)}</div></Card><form className="card pro-form" onSubmit={addProfessional}><p className="eyebrow">NUEVO PERFIL</p><h2>Registrar profesional</h2><p>Crea sus credenciales iniciales. La persona podrá cambiarlas después desde su cuenta.</p><Field label="Nombre completo" required><input name="fullName" placeholder="Nombre y apellido" required /></Field><Field label="Usuario inicial" required><input name="username" placeholder="Ej. vrojas" required /></Field><Field label="Contraseña temporal" required><input name="password" type="password" minLength="8" placeholder="Mínimo 8 caracteres" required /></Field><Button className="dark full" type="submit">＋ Crear profesional</Button></form><Card title="Asignar horario semanal" text="Marca si atiende cada día. Si atiende, registra horario y descanso."><WeeklySchedule professionals={activos} /></Card></div>
+  async function cambiarFoto(id, file) {
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) return window.alert('Usa JPG, PNG o WEBP de máximo 2 MB.')
+    const photo = await readImageAsDataUrl(file)
+    setProfessionals((current) => {
+      const next = current.map((person) => person.id === id ? { ...person, photo } : person)
+      localStorage.setItem('bienestar_professional_photos', JSON.stringify(next))
+      return next
+    })
+  }
+  if (tab === 'professionals') return <div className="admin-grid"><Card title="Profesionales activos y próximos" text="Consulta quién atiende hoy; agrega una foto para identificar al equipo." badge={`${activos.length} activos`}><div className="week-tabs">{['Anterior','Actual','Siguiente'].map((x) => <button className={semana === x ? 'selected' : ''} type="button" key={x} onClick={() => setSemana(x)}>Semana {x.toLowerCase()}</button>)}</div><p className="ayuda">Horario de la semana {semana.toLowerCase()}: cada bloque indica atención y descanso programado.</p><div className="people">{professionals.map((person) => <article key={person.id}><Avatar name={person.name} src={person.photo} /><p><b>{person.name}</b><small>{person.area}</small><small>{person.schedule || person.hours}</small><label className="photo-picker">Agregar foto<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => cambiarFoto(person.id, e.target.files?.[0])} /></label></p><div><Status>{person.active === false ? 'Inactivo' : 'Activo'}</Status><button className="link-action" type="button" onClick={() => alternarProfesional(person.id)}>{person.active === false ? 'Activar' : 'Desactivar'}</button></div></article>)}</div></Card><form className="card pro-form" onSubmit={addProfessional}><p className="eyebrow">NUEVO PERFIL</p><h2>Registrar profesional</h2><p>Crea sus credenciales iniciales. La persona podrá cambiarlas después desde su cuenta.</p><Field label="Nombre completo" required><input name="fullName" placeholder="Nombre y apellido" required /></Field><Field label="Usuario inicial" required><input name="username" placeholder="Ej. vrojas" required /></Field><Field label="Contraseña temporal" required><input name="password" type="password" minLength="8" placeholder="Mínimo 8 caracteres" required /></Field><Button className="dark full" type="submit">＋ Crear profesional</Button></form><Card title="Asignar horario semanal" text="Marca si atiende cada día. Si atiende, registra horario y descanso."><WeeklySchedule professionals={activos} /></Card></div>
   if (tab === 'appointments') return <><Card title="Supervisa la agenda institucional" text="Las citas se muestran de la más próxima a la más lejana. Al cancelar, confirma la acción y comunícala al paciente."><Table items={ordenadas} admin setAppointmentStatus={setAppointmentStatus} /></Card><Card title="Paciente y horario" text="Selecciona un paciente para revisar sus citas pasadas, programadas y consultorio."><select value={filtroPaciente} onChange={(e) => setFiltroPaciente(e.target.value)}><option value="">Selecciona un paciente</option>{appointments.map((a) => <option key={a.code} value={a.code}>{a.patient}</option>)}</select>{filtroPaciente && <Table items={appointments.filter((x) => x.code === filtroPaciente)} />}</Card></>
   if (tab === 'patients') return <PatientDirectory appointments={appointments} professionals={activos} />
   if (tab === 'reports') return <div className="reports"><Card extra="chart-card" title="Pacientes con menor frecuencia" text="Aparecen primero quienes llevan más de un mes sin asistir."><div className="alerta alerta-error">Prioridad: Camila R. y Santiago M. no han asistido en más de 30 días.</div>{appointments.map((a, i) => <Mini key={a.id} icon={String(i + 1)} first={a.patient} second={i < 2 ? 'Más de 30 días sin asistencia' : 'Asistencia frecuente'} badge={i < 2 ? 'Contactar' : 'Al día'} />)}</Card><Card extra="followup" title="Cambio de profesional" text="Elige el nuevo profesional y confirma el cambio."><Mini icon="CR" first="Camila R." second="Solicitud pendiente" badge="Pendiente" /><select><option>Selecciona profesional</option>{activos.map((p) => <option key={p.id}>{p.name}</option>)}</select><Button className="dark full" type="button" onClick={() => window.alert('Cambio registrado en esta demostración.')}>Asignar profesional</Button></Card></div>
-  if (tab === 'security') return <SecureAdminSettings />
+  if (tab === 'security') return <SecureAdminSettings adminPhoto={adminPhoto} setAdminPhoto={setAdminPhoto} />
   return <><section className="welcome purple"><div><p>Control administrativo</p><h2>La información clave, en un solo lugar.</h2><span>Usa los accesos rápidos y revisa la disponibilidad del equipo.</span></div><i>▤</i></section><div className="stats four"><Stat icon="▣" label="Citas programadas" value={String(appointments.filter((x) => x.status !== 'Cancelada').length)} text="Ordenadas para gestión" /><Stat icon="◉" label="Profesionales" value={String(activos.length)} text="Perfiles activos" /><Stat icon="♧" label="Seguimientos" value="3" text="Requieren contacto" /><Stat icon="✓" label="Atendidas" value={String(appointments.filter((x) => x.status === 'Atendida').length)} text="Durante el periodo" /></div><div className="columns"><Card title="Agenda del día" text="Quién está atendiendo y quién sigue">{activos.map((p, i) => <Mini key={p.id} icon={i === 0 ? 'Ahora' : 'Sigue'} first={p.name} second={i === 0 ? 'Atiende hasta las 4:00 p. m.' : 'Ingresa a las 9:00 a. m.'} badge={i === 0 ? 'En atención' : 'Próximo'} />)}</Card><Card title="Próximas citas" text="Agenda">{ordenadas.slice(0, 3).map((item) => <Mini key={item.id} icon={item.time.slice(0, 2)} first={item.patient} second={`${item.professional} · ${item.room}`} badge={item.status} />)}</Card></div></>
 }
 
@@ -261,17 +277,87 @@ function PatientDirectory({ appointments, professionals }) {
   return <div className="admin-grid"><Card title="Directorio de pacientes" text="Busca una persona y revisa rápidamente su agenda y profesional asignado."><label className="patient-picker">Paciente<select value={selected} onChange={(e) => setSelected(e.target.value)}>{appointments.map((item) => <option key={item.code} value={item.code}>{item.patient} · {item.code}</option>)}</select></label>{patient && <div className="patient-summary"><div><b>{patient.patient}</b><span>{patient.phone}</span></div><div><b>Profesional</b><span>{patient.professional}</span></div><div><b>Consultorio</b><span>{patient.room}</span></div></div>}<p className="ayuda">Use la pestaña Agenda para cancelar o modificar el estado de una cita.</p></Card><Card title="Historial y citas programadas" text="Las citas se separan para que sea más fácil atender cada caso."><h3>Próximas</h3><Table items={patientAppointments.filter((item) => !['Atendida','Cancelada','No asistió'].includes(item.status))} /><h3>Historial</h3><Table items={patientAppointments.filter((item) => ['Atendida','Cancelada','No asistió'].includes(item.status))} /></Card><Card title="Reasignar profesional" text="Selecciona un profesional activo; confirma con el paciente antes de guardar."><select><option>Selecciona profesional</option>{professionals.map((person) => <option key={person.id}>{person.name}</option>)}</select><Button className="dark" type="button" onClick={() => window.alert('Reasignación preparada. En producción se guarda tras confirmar al paciente.')}>Preparar reasignación</Button></Card></div>
 }
 
-function SecureAdminSettings() {
+function SecureAdminSettings({ adminPhoto, setAdminPhoto }) {
   const [account, setAccount] = useState({ name: 'Laura Mendoza', email: 'laura@uniminuto.edu.co', phone: '300 000 0000', username: 'laura.mendoza' })
   const [draft, setDraft] = useState(account)
-  const [step, setStep] = useState('edit')
-  const [code, setCode] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [verificationCode, setVerificationCode] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+  useEffect(() => {
+    if (!supabase) return
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return
+      const { data: profile } = await supabase.from('perfiles').select('nombre_completo,correo,telefono,usuario').eq('id', data.user.id).single()
+      if (!profile) return
+      const next = { name: profile.nombre_completo || '', email: profile.correo || data.user.email || '', phone: profile.telefono || '', username: profile.usuario || '' }
+      setAccount(next); setDraft(next)
+    })
+  }, [])
   const emailChanged = draft.email !== account.email
   const phoneChanged = draft.phone !== account.phone
-  const destination = emailChanged && !phoneChanged ? `SMS al número actual ${account.phone}` : phoneChanged && !emailChanged ? `correo actual ${account.email}` : emailChanged && phoneChanged ? `correo actual ${account.email} y SMS al número actual ${account.phone}` : 'tu método de recuperación actual'
-  const requestCode = () => { if (!emailChanged && !phoneChanged) return window.alert('No hay cambios de correo o teléfono que verificar.'); setStep('verify'); window.alert(`Código de verificación enviado a ${destination}.`) }
-  const verifyAndSave = () => { if (code !== '123456') return window.alert('Código incorrecto. Revisa el canal de recuperación y vuelve a intentarlo.'); setAccount(draft); setStep('done'); setCode('') }
-  return <div className="security-layout"><Card title="Datos y seguridad" text="Los cambios de contacto se validan con el canal que ya estaba registrado; nunca con el dato nuevo."><div className="security-note"><b>Protección cruzada</b><span>Si cambia el correo, validamos por SMS al teléfono actual. Si cambia el teléfono, validamos por correo al email actual. Si cambia ambos, se requieren las dos verificaciones.</span></div><div className="profile-edit"><Field label="Nombre"><input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></Field><Field label="Usuario"><input value={draft.username} onChange={(e) => setDraft({ ...draft, username: e.target.value })} /></Field><Field label="Correo electrónico"><input type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} /></Field><Field label="Teléfono"><input value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} /></Field><Field label="Nueva contraseña"><input type="password" minLength="12" placeholder="Mínimo 12 caracteres" /></Field><Field label="Confirmar contraseña"><input type="password" placeholder="Repite la nueva contraseña" /></Field></div>{step === 'edit' && <Button className="dark" type="button" onClick={requestCode}>Enviar código de verificación</Button>}{step === 'verify' && <div className="verification"><p><b>Verifica tu identidad</b><br />El código fue enviado a: {destination}.</p><input value={code} maxLength="6" inputMode="numeric" onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} placeholder="Código de 6 dígitos" /><Button className="dark" type="button" onClick={verifyAndSave}>Verificar y guardar</Button><button className="link-action" type="button" onClick={requestCode}>Reenviar código</button></div>}{step === 'done' && <p className="alerta alerta-exito">Datos actualizados de forma segura. La próxima edición requerirá una nueva verificación.</p>}</Card><Card title="Sesiones y recuperación" text="Complementa la seguridad de la cuenta con estas opciones."><div className="security-actions"><button type="button" onClick={() => window.alert('Se cerrarán las otras sesiones al conectar esta función al sistema de autenticación.')}>Cerrar otras sesiones</button><button type="button" onClick={() => window.alert('La autenticación en dos pasos requiere configurar una app autenticadora en el backend.')}>Configurar segundo factor</button><button type="button" onClick={() => window.alert('Se enviará un enlace seguro al canal de recuperación actual.')}>Actualizar recuperación</button></div><p className="ayuda">Demostración: usa <b>123456</b> como código. En producción, el código debe generarse, guardarse cifrado, expirar en pocos minutos y limitar los intentos.</p></Card></div>
+  const profileChanged = emailChanged || phoneChanged || draft.name !== account.name || draft.username !== account.username
+  async function saveProfile() {
+    if (!supabase) return setError('Configura Supabase para guardar los datos.')
+    if (!profileChanged) return setError('No hay cambios para guardar.')
+    if (!currentPassword) return setError('Escribe tu contraseña actual para guardar los datos.')
+    setBusy(true); setError('')
+    const { data, error: invokeError } = await supabase.functions.invoke('admin-account-security', { body: { action: 'profile', password: currentPassword, ...draft } })
+    setBusy(false)
+    if (invokeError || data?.error) return setError(data?.error || invokeError.message)
+    setAccount(draft); setCurrentPassword(''); setMessage('Datos actualizados correctamente.')
+  }
+  async function requestPasswordCode() {
+    if (!supabase) return setError('Configura Supabase para solicitar el código.')
+    setBusy(true); setError('')
+    const { error: requestError } = await supabase.auth.reauthenticate()
+    setBusy(false)
+    if (requestError) return setError(requestError.message)
+    setMessage('Enviamos un código de 8 dígitos a tu correo. Vence en 5 minutos.')
+  }
+  async function changePassword() {
+    if (verificationCode.length !== 8) return setError('Escribe los 8 dígitos completos del código de verificación.')
+    if (newPassword.length < 8) return setError('La nueva contraseña debe tener al menos 8 caracteres.')
+    if (newPassword !== confirmPassword) return setError('Las contraseñas nuevas no coinciden.')
+    setBusy(true); setError('')
+    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword, nonce: verificationCode })
+    setBusy(false)
+    if (updateError) {
+      const details = `${updateError.code || ''} ${updateError.message || ''}`.toLowerCase()
+      if (details.includes('expired') || details.includes('otp_expired')) return setError('El código expiró. Solicita uno nuevo; cada código vence en 5 minutos.')
+      if (details.includes('reauthentication_not_valid') || details.includes('nonce') || details.includes('invalid')) return setError('El código es incorrecto. Verifica los 8 dígitos o solicita uno nuevo.')
+      return setError(updateError.message)
+    }
+    setNewPassword(''); setConfirmPassword(''); setVerificationCode(''); setMessage('Contraseña actualizada correctamente.')
+  }
+  async function seleccionarFoto(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 2 * 1024 * 1024) { setError('Usa JPG, PNG o WEBP de máximo 2 MB.'); return }
+    const localPreview = await readImageAsDataUrl(file)
+    setAdminPhoto(localPreview)
+    localStorage.setItem('bienestar_admin_photo', localPreview)
+    if (!supabase) { setMessage('Foto de administrador guardada en este dispositivo.'); return }
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) { setMessage('Foto de administrador guardada en este dispositivo.'); return }
+      const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const path = `${data.user.id}/perfil.${extension}`
+      const { error: uploadError } = await supabase.storage.from('fotos-perfil').upload(path, file, { upsert: true, contentType: file.type })
+      if (uploadError) throw uploadError
+      const { error: profileError } = await supabase.from('perfiles').update({ foto_perfil_path: path }).eq('id', data.user.id)
+      if (profileError) throw profileError
+      const { data: signed, error: signedError } = await supabase.storage.from('fotos-perfil').createSignedUrl(path, 60 * 60)
+      if (signedError) throw signedError
+      setAdminPhoto(signed.signedUrl); setMessage('Foto de administrador guardada correctamente.')
+    }).catch((uploadError) => { setAdminPhoto(localPreview); setError(uploadError.message || 'No se pudo guardar la foto en el servidor.') })
+  }
+  const closeFeedback = () => { setError(''); setMessage('') }
+  return <>{(error || message) && <FeedbackModal tone={error ? 'error' : 'success'} onClose={closeFeedback}>{error || message}</FeedbackModal>}<div className="security-layout"><Card title="Datos del perfil" text="Para guardar cualquier cambio, confirma primero tu contraseña actual."><div className="admin-photo-editor"><Avatar name={account.name} src={adminPhoto} className="avatar-large" /><label className="photo-picker">Agregar o cambiar foto<input type="file" accept="image/jpeg,image/png,image/webp" onChange={seleccionarFoto} /></label><small>JPG, PNG o WEBP · máximo 2 MB.</small></div><div className="profile-edit"><Field label="Nombre"><input value={draft.name} maxLength="120" onChange={(e) => setDraft({ ...draft, name: e.target.value })} /></Field><Field label="Usuario"><input value={draft.username} minLength="3" maxLength="32" pattern="[A-Za-z0-9._-]+" onChange={(e) => setDraft({ ...draft, username: e.target.value })} /><small>3–32 caracteres: letras, números, punto, guion o guion bajo.</small></Field><Field label="Correo electrónico"><input type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} /></Field><Field label="Teléfono"><input value={draft.phone} inputMode="tel" pattern="\\+[1-9][0-9]{7,14}" onChange={(e) => setDraft({ ...draft, phone: e.target.value })} placeholder="Ej. +573001234567" /><small>Usa formato internacional con +.</small></Field><Field label="Contraseña actual"><input type="password" autoComplete="current-password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} placeholder="Necesaria para guardar cambios" /></Field></div><Button className="dark" type="button" disabled={busy || !profileChanged} onClick={saveProfile}>{busy ? 'Guardando…' : 'Guardar datos'}</Button></Card><Card title="Cambiar contraseña" text="Solicita el código y escríbelo junto con tu nueva contraseña."><div className="verification password-change"><p><b>Código de verificación</b><br />Son <strong>8 dígitos</strong> enviados al correo de la cuenta. El código vence en <strong>5 minutos</strong>.</p><input className="code-input" value={verificationCode} maxLength="8" inputMode="numeric" onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))} placeholder="00000000" aria-label="Código de verificación de 8 dígitos" /><label className="password-field"><input type={showNewPassword ? 'text' : 'password'} minLength="8" autoComplete="new-password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Nueva contraseña" /><button type="button" aria-label={showNewPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setShowNewPassword((value) => !value)}>{showNewPassword ? '◉' : '◌'}</button></label><small className="password-help">Mínimo 8 caracteres. No se permiten contraseñas de 4 caracteres por seguridad.</small><label className="password-field"><input type={showConfirmPassword ? 'text' : 'password'} minLength="8" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Repite la nueva contraseña" /><button type="button" aria-label={showConfirmPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'} onClick={() => setShowConfirmPassword((value) => !value)}>{showConfirmPassword ? '◉' : '◌'}</button></label><Button className="dark" type="button" disabled={busy} onClick={requestPasswordCode}>{busy ? 'Enviando…' : 'Enviar / reenviar código'}</Button><Button className="dark" type="button" disabled={busy || verificationCode.length !== 8} onClick={changePassword}>{busy ? 'Guardando…' : 'Cambiar contraseña'}</Button></div></Card></div></>
 }
 
 function Card({ title, text, badge, children, extra = '' }) { return <section className={`card ${extra}`}><header>{text && <p className="eyebrow">{text}</p>}<div><h2>{title}</h2>{badge && <Status>{badge}</Status>}</div></header>{children}</section> }
