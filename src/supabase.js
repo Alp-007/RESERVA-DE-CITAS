@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim()
@@ -11,3 +10,6 @@ export const supabaseConfigurado = Boolean(
 export const supabase = supabaseConfigurado
   ? createClient(supabaseUrl, supabaseKey)
   : null
+console.log('URL cargada:', supabaseUrl)
+console.log('Clave detectada:', Boolean(supabaseKey))
+console.log('Supabase configurado:', supabaseConfigurado)
