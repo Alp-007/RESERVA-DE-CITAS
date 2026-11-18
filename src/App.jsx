@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
-import { supabase } from './supabase'
+import { supabase, supabaseConfigurado } from './supabase'
 
 const slots = [
   ['MAR-09', 'Martes 14 de octubre', '9:00 a. m.'],
@@ -35,13 +35,25 @@ function App() {
   const [bookingStep, setBookingStep] = useState('schedule')
   const [profileType, setProfileType] = useState('student')
   const [reference, setReference] = useState('')
+  const [showCookies, setShowCookies] = useState(() => !localStorage.getItem('uniminuto-cookie-choice'))
+  const [showTop, setShowTop] = useState(false)
 
   useEffect(() => {
+    if (!supabaseConfigurado) {
+      setConnection('Modo local · sin conexión a Supabase')
+      return undefined
+    }
     let mounted = true
     supabase.auth.getSession().then(({ error }) => {
       if (mounted) setConnection(error ? 'Modo local · sin sesión activa' : 'Portal seguro de Bienestar Universitario')
     }).catch(() => mounted && setConnection('Modo local · sin sesión activa'))
     return () => { mounted = false }
+  }, [])
+
+  useEffect(() => {
+    const updateScroll = () => setShowTop(window.scrollY > 420)
+    window.addEventListener('scroll', updateScroll, { passive: true })
+    return () => window.removeEventListener('scroll', updateScroll)
   }, [])
 
   const role = session?.role || 'user'
@@ -58,6 +70,10 @@ function App() {
 
   async function handleLogin(event) {
     event.preventDefault()
+    if (!supabaseConfigurado) {
+      setNotice({ tone: 'warning', text: 'El inicio de sesión requiere configurar Supabase. Puedes explorar el portal con el acceso de demostración.' })
+      return
+    }
     const form = event.currentTarget
     setLoading(true)
     setNotice(null)
@@ -76,6 +92,10 @@ function App() {
 
   async function handleRegister(event) {
     event.preventDefault()
+    if (!supabaseConfigurado) {
+      setNotice({ tone: 'warning', text: 'El registro requiere configurar Supabase. Puedes explorar el portal con el acceso de demostración.' })
+      return
+    }
     const form = event.currentTarget
     const file = form.referral.files[0]
     if (file && (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 8 * 1024 * 1024)) {
@@ -125,7 +145,7 @@ function App() {
   }
 
   async function logout() {
-    await supabase.auth.signOut()
+    if (supabaseConfigurado && !session?.demo) await supabase.auth.signOut()
     setSession(null)
     setScreen('home')
     setNotice(null)
@@ -137,16 +157,24 @@ function App() {
     {screen === 'login' && <Login submit={handleLogin} notice={notice} loading={loading} home={() => setScreen('home')} register={() => { setNotice(null); setScreen('register') }} demo={enterDemo} />}
     {screen === 'register' && <Register submit={handleRegister} notice={notice} loading={loading} home={() => setScreen('home')} login={() => { setNotice(null); setScreen('login') }} />}
     {screen === 'portal' && <Portal role={role} session={session} tab={tab} setTab={setTab} logout={logout} notice={notice} clearNotice={() => setNotice(null)} appointments={appointments} professionals={professionals} contribution={contribution} profileType={profileType} setProfileType={setProfileType} slot={slot} setSlot={setSlot} bookingStep={bookingStep} setBookingStep={setBookingStep} reference={reference} setReference={setReference} reportPayment={reportPayment} approvePayment={approvePayment} setAppointmentStatus={setAppointmentStatus} addProfessional={addProfessional} approvedTotal={approvedTotal} />}
+    <div className="floating-navigation" aria-label="Navegación rápida"><button type="button" onClick={() => { if (screen === 'portal' && tab === 'book' && bookingStep === 'payment') setBookingStep('schedule'); else setScreen('home') }}>← <span>Atrás</span></button><button className="floating-home" type="button" aria-label="Inicio" onClick={() => { setScreen('home'); window.scrollTo({ top: 0, behavior: 'smooth' }) }}>⌂</button></div>
+    {screen === 'portal' && role === 'user' && tab === 'book' && bookingStep === 'schedule' && <button className="booking-next" type="button" onClick={() => slot ? setBookingStep('payment') : setNotice({ tone: 'warning', text: 'Selecciona un horario para continuar.' })}>Siguiente →</button>}
+    {showTop && <button className="back-to-top" type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>↑ <span>Volver arriba</span></button>}
+    {showCookies && <CookieBanner onChoice={(choice) => { localStorage.setItem('uniminuto-cookie-choice', choice); setShowCookies(false) }} />}
     <ChatAssistant />
   </div>
 }
 
-function Mark() { return <span className="mark">M</span> }
+function Mark() { return <img className="mark-logo" src="/logo-capbe-rgh.png" alt="Centro de Atención Psicológica y Bienestar Emocional Rafael García Herrera" /> }
 function Brand({ short = false }) { return <div className="brand"><Mark />{!short && <span><b>UNIMINUTO</b><small>Bienestar Universitario</small></span>}</div> }
 function Icon({ children }) { return <span className="icon" aria-hidden="true">{children}</span> }
 function Alert({ notice }) { return notice && <div className={`alert ${notice.tone}`} role="status"><Icon>{notice.tone === 'success' ? '✓' : '!'}</Icon><span>{notice.text}</span></div> }
 function Status({ children }) { return <span className={`status ${String(children).toLowerCase().replaceAll(' ', '-')}`}>{children}</span> }
 function Button({ children, className = '', ...props }) { return <button className={`button ${className}`} {...props}>{children}</button> }
+
+function CookieBanner({ onChoice }) {
+  return <aside className="cookie-banner" aria-label="Aviso de cookies"><p>Usamos cookies para mejorar tu experiencia. Al continuar aceptas nuestra <a href="https://www.uniminuto.edu/documentos-juridicos-uniminuto" target="_blank" rel="noreferrer">Política de Privacidad y Tratamiento de Datos</a>.</p><div><button className="cookie-accept" type="button" onClick={() => onChoice('accepted')}>Aceptar Todo</button><button className="cookie-reject" type="button" onClick={() => onChoice('rejected')}>Rechazar</button><a href="https://www.uniminuto.edu/documentos-juridicos-uniminuto" target="_blank" rel="noreferrer">Ver Políticas</a></div></aside>
+}
 
 function ChatAssistant() {
   const [open, setOpen] = useState(false)
@@ -173,11 +201,17 @@ function ChatAssistant() {
 }
 
 function Header({ goHome, openLogin, openRegister }) {
-  return <header className="header"><button className="brand-button" type="button" onClick={goHome}><Brand /></button><nav><button type="button" onClick={goHome}>Inicio</button><a href="#servicios">Servicios</a><a href="#proceso">Cómo funciona</a></nav><div><button className="plain" type="button" onClick={openRegister}>Crear cuenta</button><Button className="dark" type="button" onClick={openLogin}>Ingresar <Icon>→</Icon></Button></div></header>
+  const [menuOpen, setMenuOpen] = useState(false)
+  return <header className="header"><button className="brand-button" type="button" onClick={goHome}><Brand /></button><button className="menu-toggle" type="button" aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}>{menuOpen ? '×' : '☰'}</button><nav className={menuOpen ? 'menu-open' : ''}><button type="button" onClick={() => { goHome(); setMenuOpen(false) }}>Inicio</button><a href="#servicios" onClick={() => setMenuOpen(false)}>Servicios</a><a href="#proceso" onClick={() => setMenuOpen(false)}>Cómo funciona</a></nav><div><button className="plain" type="button" onClick={openRegister}>Crear cuenta</button><Button className="dark" type="button" onClick={openLogin}>Ingresar <Icon>→</Icon></Button></div></header>
 }
 
 function Home({ openLogin, openRegister, demo }) {
   return <main>
+    <section className="mission-vision" aria-label="Misión y visión institucional">
+      <article><span>PROPÓSITO INSTITUCIONAL</span><h2>Misión UNIMINUTO</h2><p>Formar profesionales íntegros, con sentido social, comprometidos con el desarrollo humano y sostenible de la comunidad.</p></article>
+      <article><span>HORIZONTE INSTITUCIONAL</span><h2>Visión UNIMINUTO</h2><p>Ser reconocida como una institución de educación superior de alta calidad, innovadora e incluyente, que transforma vidas y territorios.</p></article>
+    </section>
+    <section className="soacha-band"><b>UNIMINUTO · Centro Regional Soacha</b><span>Educación con enfoque social y acompañamiento al estudiante · Tv. 5 #5G-95, Soacha · Línea nacional 01 8000 119390</span><div className="soacha-links"><a href="https://www.uniminuto.edu/oferta-academica" target="_blank" rel="noreferrer">Oferta académica ↗</a><a href="https://www.uniminuto.edu/articulo/directorio-uniminuto-centro-universitario-soacha" target="_blank" rel="noreferrer">Contacto de sede ↗</a></div></section>
     <section className="hero"><div className="hero-copy"><p className="eyebrow">BIENESTAR UNIVERSITARIO</p><h1>Tu bienestar merece un espacio para <em>ser escuchado.</em></h1><p>Agenda, consulta y gestiona tu atención psicológica en un portal claro, privado y pensado para ti.</p><div className="hero-actions"><Button className="orange" type="button" onClick={openLogin}>Solicitar una cita <Icon>→</Icon></Button><Button className="ghost" type="button" onClick={demo}>Conocer el portal</Button></div><div className="trust"><span>⌾ Información con acceso por roles</span><span>◷ Agenda organizada</span></div></div><HeroArt /></section>
     <section className="strip"><span>Atención para estudiantes, docentes, administrativos y comunidad externa.</span><button type="button" onClick={openRegister}>Regístrate para comenzar <Icon>→</Icon></button></section>
     <section className="section" id="servicios"><div className="section-intro"><p className="eyebrow">EL PORTAL</p><h2>Todo lo necesario para organizar tu atención.</h2><p>Una experiencia simple para pedir acompañamiento y una gestión ordenada para el equipo institucional.</p></div><div className="features"><Feature number="01" icon="▣" title="Agenda disponible" text="Consulta los espacios habilitados por tu profesional asignado y solicita la fecha que te funciona." /><Feature number="02" icon="◈" title="Aporte claro" text="Revisa el valor correspondiente, paga con Bre-B y reporta el número de aprobación." /><Feature number="03" icon="◌" title="Seguimiento oportuno" text="Consulta el estado de la solicitud, tus citas y los avisos relevantes desde un solo lugar." /></div></section>
@@ -189,7 +223,7 @@ function Home({ openLogin, openRegister, demo }) {
 
 function HeroArt() { return <div className="hero-art" aria-label="Ilustración de acompañamiento psicológico"><i className="sun" /><i className="shape-one" /><i className="shape-two" /><div className="hero-card"><span className="heart">♡</span><small>Tu cita, a tu ritmo</small><b>Atención con acompañamiento</b><div><i /><i /><i /></div></div><div className="appointment-bubble"><span>VR</span><p><b>Ps. Valentina</b><small>Próxima disponibilidad</small></p><em>✓</em></div></div> }
 function Feature({ number, icon, title, text }) { return <article className="feature"><span className="feature-number">{number}</span><i>{icon}</i><h3>{title}</h3><p>{text}</p></article> }
-function Footer() { return <footer><Brand /><p>Portal académico de Bienestar Universitario · Sistema de gestión de citas psicológicas</p><small>UNIMINUTO · Centro Universitario Regional Soacha</small></footer> }
+function Footer() { return <footer><Brand /><p>Portal de Bienestar Universitario · Sistema de gestión de citas psicológicas</p><small>UNIMINUTO · Centro Universitario Soacha<br /><a href="https://www.uniminuto.edu/documentos-juridicos-uniminuto" target="_blank" rel="noreferrer">Políticas de Privacidad</a> · <a href="https://www.uniminuto.edu/documentos-juridicos-uniminuto" target="_blank" rel="noreferrer">Tratamiento de Datos</a> · <a href="https://www.uniminuto.edu/terminos-y-condiciones-blog" target="_blank" rel="noreferrer">Términos y Condiciones</a></small></footer> }
 
 function Login({ submit, notice, loading, home, register, demo }) {
   return <main className="auth-page"><aside><Brand /><div><p className="eyebrow">PORTAL DE BIENESTAR</p><h1>Un lugar seguro para empezar.</h1><p>Accede a tus citas, notificaciones y solicitudes de atención desde un único lugar.</p></div><ul><li>⌾ Tus datos se muestran según el rol autorizado.</li><li>♡ Atención organizada y centrada en las personas.</li></ul></aside><section><button className="back" type="button" onClick={home}>← Volver al inicio</button><form className="login-form" onSubmit={submit}><p className="eyebrow">INICIAR SESIÓN</p><h2>Te damos la bienvenida.</h2><p>Ingresa con el correo y contraseña registrados.</p><Alert notice={notice} /><label>Correo electrónico<input name="email" type="email" autoComplete="email" placeholder="nombre@uniminuto.edu.co" required /></label><label>Contraseña<input name="password" type="password" autoComplete="current-password" placeholder="Escribe tu contraseña" required /></label><Button className="dark full" type="submit" disabled={loading}>{loading ? 'Ingresando...' : 'Ingresar al portal'} <Icon>→</Icon></Button><div className="switch">¿Aún no tienes una cuenta? <button type="button" onClick={register}>Regístrate</button></div></form><div className="demo"><b>Vista de demostración</b><p>Explora los perfiles sin crear ni modificar datos reales.</p><div><button type="button" onClick={() => demo('user')}>Usuario</button><button type="button" onClick={() => demo('professional')}>Profesional</button><button type="button" onClick={() => demo('admin')}>Administrador</button></div></div></section></main>
@@ -198,7 +232,17 @@ function Login({ submit, notice, loading, home, register, demo }) {
 function Register({ submit, notice, loading, home, login }) {
   const [birth, setBirth] = useState('')
   const age = birth ? Math.max(0, Math.floor((Date.now() - new Date(birth).getTime()) / 31557600000)) : ''
-  return <main className="register-page"><aside><Brand /><p className="eyebrow">CREA TU CUENTA</p><h1>Comienza tu proceso de atención.</h1><p>Completa la información inicial. Los campos con <b>*</b> son obligatorios.</p><div className="privacy"><i>⌾</i><span><strong>Información protegida</strong><small>Los documentos de identidad, dirección y remisión serán de acceso exclusivo del equipo administrador autorizado.</small></span></div><button className="back" type="button" onClick={home}>← Volver al inicio</button></aside><form className="registration" onSubmit={submit}><div><p className="eyebrow">REGISTRO</p><h2>Datos de la persona</h2><p>Tu perfil se verificará después de confirmar el correo.</p></div><Alert notice={notice} /><div className="form-grid"><Field label="Nombre completo" required><input name="fullName" placeholder="Escribe tu nombre completo" required /></Field><Field label="Tipo de documento" required><select name="documentType" defaultValue="" required><option value="" disabled>Selecciona una opción</option><option>Cédula de ciudadanía</option><option>Tarjeta de identidad</option><option>Cédula de extranjería</option><option>Pasaporte</option></select></Field><Field label="Número de documento" required><input name="documentNumber" inputMode="numeric" placeholder="Sin puntos ni espacios" required /></Field><Field label="Fecha de nacimiento" required><input name="birthDate" type="date" value={birth} onChange={(event) => setBirth(event.target.value)} required /></Field><Field label="Edad calculada"><input value={age === '' ? 'Se calcula automáticamente' : `${age} años`} readOnly /></Field><Field label="Teléfono de contacto" required><input name="phone" type="tel" placeholder="300 000 0000" required /></Field><Field label="Dirección" required wide><input name="address" placeholder="Dirección de residencia" required /></Field><Field label="Correo electrónico" required><input name="email" type="email" autoComplete="email" placeholder="nombre@correo.com" required /></Field><Field label="Tipo de usuario" required><select name="userType" defaultValue="" required><option value="" disabled>Selecciona una opción</option><option value="estudiante">Estudiante UNIMINUTO</option><option value="docente">Docente</option><option value="administrativo">Administrativo</option><option value="externo">Usuario externo</option></select></Field><Field label="Jornada de preferencia" required><select name="preference" defaultValue="" required><option value="" disabled>Selecciona una opción</option><option>Mañana</option><option>Tarde</option><option>Indiferente</option></select></Field><Field label="Documento de remisión (opcional)" wide><input name="referral" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" /><small>PDF, JPG, PNG o WEBP · Máximo 8 MB</small></Field><Field label="Crear contraseña" required wide><input name="password" type="password" minLength="8" autoComplete="new-password" placeholder="Mínimo 8 caracteres" required /></Field></div><label className="consent"><input type="checkbox" required /><span>Autorizo el tratamiento de mis datos personales y confirmo que la información suministrada es veraz. <b>*</b></span></label><Button className="dark full" type="submit" disabled={loading}>{loading ? 'Creando cuenta...' : 'Crear cuenta y verificar correo'} <Icon>→</Icon></Button><div className="switch">¿Ya tienes cuenta? <button type="button" onClick={login}>Inicia sesión</button></div></form></main>
+  return <main className="register-page"><aside><Brand /><p className="eyebrow">CREA TU CUENTA</p><h1>Comienza tu proceso de atención.</h1><p>Completa la información inicial. Los campos con <b>*</b> son obligatorios.</p><div className="privacy"><i>⌾</i><span><strong>Información protegida</strong><small>Los documentos de identidad, dirección y remisión serán de acceso exclusivo del equipo administrador autorizado.</small></span></div><button className="back" type="button" onClick={home}>← Volver al inicio</button></aside><form className="registration" onSubmit={submit}><div><p className="eyebrow">REGISTRO</p><h2>Datos de la persona</h2><p>Tu perfil se verificará después de confirmar el correo.</p></div><Alert notice={notice} /><div className="form-grid"><Field label="Nombre completo" required><input name="fullName" placeholder="Escribe tu nombre completo" required /></Field><Field label="Tipo de documento" required><select name="documentType" defaultValue="" required><option value="" disabled>Selecciona una opción</option><option>Cédula de ciudadanía</option><option>Tarjeta de identidad</option><option>Cédula de extranjería</option><option>Pasaporte</option></select></Field><Field label="Número de documento" required><input name="documentNumber" inputMode="numeric" placeholder="Sin puntos ni espacios" required /></Field><Field label="Fecha de nacimiento" required><input name="birthDate" type="date" value={birth} onChange={(event) => setBirth(event.target.value)} required /></Field><Field label="Edad calculada"><input value={age === '' ? 'Se calcula automáticamente' : `${age} años`} readOnly /></Field><Field label="Teléfono de contacto" required><input name="phone" type="tel" placeholder="300 000 0000" required /></Field><Field label="Dirección" required wide><input name="address" placeholder="Dirección de residencia" required /></Field><Field label="Correo electrónico" required><input name="email" type="email" autoComplete="email" placeholder="nombre@correo.com" required /></Field><Field label="Tipo de usuario" required><select name="userType" defaultValue="" required><option value="" disabled>Selecciona una opción</option><option value="estudiante">Estudiante UNIMINUTO</option><option value="docente">Docente</option><option value="administrativo">Administrativo</option><option value="externo">Usuario externo</option></select></Field><Field label="Jornada de preferencia" required><select name="preference" defaultValue="" required><option value="" disabled>Selecciona una opción</option><option>Mañana</option><option>Tarde</option><option>Indiferente</option></select></Field><Field label="Documento de remisión (opcional)" wide><input name="referral" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" /><small>PDF, JPG, PNG o WEBP · Máximo 8 MB</small></Field><Field label="Crear contraseña" required wide><input name="password" type="password" minLength="8" autoComplete="new-password" placeholder="Mínimo 8 caracteres" required /></Field></div><ConsentDocuments age={age} /><label className="consent"><input type="checkbox" required /><span>Autorizo el tratamiento de mis datos personales y confirmo que la información suministrada es veraz. <b>*</b></span></label><Button className="dark full" type="submit" disabled={loading}>{loading ? 'Creando cuenta...' : 'Crear cuenta y verificar correo'} <Icon>→</Icon></Button><div className="switch">¿Ya tienes cuenta? <button type="button" onClick={login}>Inicia sesión</button></div></form></main>
+}
+function ConsentDocuments({ age }) {
+  const documents = [
+    ['consentimiento-informado-adulto.pdf', 'Consentimiento informado para adultos'],
+    ['consentimiento-menores-nna.pdf', 'Consentimiento para evaluación y tratamiento de menores (NNA)'],
+    ['asentimiento-adolescente.pdf', 'Asentimiento para adolescentes de 14 a 17 años'],
+    ['asentimiento-ninos.pdf', 'Asentimiento informado para niños y niñas'],
+  ]
+  const guidance = age === '' ? 'Indica tu fecha de nacimiento para ver cuáles documentos corresponden a tu edad.' : age >= 18 ? 'Por tu edad, revisa el consentimiento informado para adultos antes de tu atención.' : age >= 14 ? 'Para menores de edad, revisa el consentimiento NNA con tu acudiente y el asentimiento para adolescentes.' : 'Para niños y niñas, revisa el consentimiento NNA con tu acudiente y el asentimiento infantil.'
+  return <section className="consent-documents" aria-labelledby="consent-documents-title"><h3 id="consent-documents-title">Documentos para la atención psicológica</h3><p>{guidance}</p><ul>{documents.map(([file, title]) => <li key={file}><a href={`/documentos/${file}`} target="_blank" rel="noreferrer">{title} <span>PDF ↗</span></a></li>)}</ul><small>Descarga y lee el documento que corresponda. El equipo profesional te indicará cómo diligenciarlo. La casilla de este registro autoriza únicamente el tratamiento de datos de la cuenta y no sustituye el consentimiento informado clínico.</small></section>
 }
 function Field({ label, required, wide, children }) { return <label className={`field ${wide ? 'wide' : ''}`}><span>{label}{required && <b> *</b>}</span>{children}</label> }
 

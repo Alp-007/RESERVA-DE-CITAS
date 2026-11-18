@@ -74,3 +74,9 @@ docs/
 ## Entrega y validación
 
 Casos funcionales y de seguridad en `docs/plan-pruebas.md`. Deben ejecutarse contra Supabase con cuentas de desarrollo y completarse las evidencias. No aprobar transacciones reales desde este sistema sin validarlas manualmente en Nequi.
+
+## Materiales institucionales y consentimientos
+
+Se incorporó el logotipo CAPBE-RGH enviado y se incluyeron los formularios PDF de consentimiento informado para adultos y NNA, además de los asentimientos para adolescentes y niños. Están disponibles desde el registro y se orientan según la edad indicada. La autorización de tratamiento de datos del registro es independiente de esos consentimientos clínicos.
+
+El ZIP recibido no contiene una carta de autorización para publicar la página; contiene el logotipo y los cuatro formularios de atención psicológica.
