@@ -27,6 +27,11 @@ export default function PanelUsuario({ supabase, usuario, perfil, vista = 'mis-c
 
   useEffect(() => {
     let activo = true
+    const channel = supabase.channel(`usuario-citas-${usuario.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'citas', filter: `usuario_id=eq.${usuario.id}` }, () => setRevision((value) => value + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pagos', filter: `usuario_id=eq.${usuario.id}` }, () => setRevision((value) => value + 1))
+      .subscribe()
+    const polling = window.setInterval(() => setRevision((value) => value + 1), 30000)
     Promise.all([
       supabase.from('servicios').select('id,nombre,descripcion,duracion_minutos,precio_cop').eq('activo', true).order('nombre'),
       supabase.from('citas')
@@ -48,33 +53,18 @@ export default function PanelUsuario({ supabase, usuario, perfil, vista = 'mis-c
       if (aporteResp.data) setAporte(perfil.tipo_usuario === 'estudiante' && perfil.estudiante_validado ? aporteResp.data.aporte_estudiante : aporteResp.data.aporte_otros)
       setCargando(false)
     })
-    return () => { activo = false }
+    return () => { activo = false; window.clearInterval(polling); supabase.removeChannel(channel) }
   }, [supabase, usuario.id, revision, perfil.tipo_usuario, perfil.estudiante_validado])
 
   useEffect(() => {
   if (vista !== 'solicitar-cita' || !servicioElegido || !fechaElegida) return undefined
 
   let activo = true
-  setCargandoHorarios(true)
-supabase
-  .from('perfiles')
-  .select('profesional_asignado_id')
-  .eq('id', usuario.id)
-  .single()
-  .then(({ data, error }) => {
-    console.log('Profesional asignado:', data)
-    console.log('Error al consultar asignación:', error)
-  })
   supabase.rpc('obtener_horarios_disponibles', {
     servicio: servicioElegido,
     fecha: fechaElegida,
   }).then(({ data, error: horariosError }) => {
     if (!activo) return
-
-    console.log('Fecha seleccionada:', fechaElegida)
-    console.log('Servicio seleccionado:', servicioElegido)
-    console.log('Horarios recibidos:', data)
-    console.log('Error de Supabase:', horariosError)
 
     if (horariosError) {
       setError(horariosError.message)
@@ -276,6 +266,19 @@ supabase
     </article>
   </div>
 </section>}
+
+      {vista === 'solicitar-cita' && <section className="panel-seccion">
+        <h2>Solicita tu espacio de atención</h2>
+        <p>Elige un servicio, una fecha y uno de los horarios disponibles de tu profesional asignado.</p>
+        <form className="solicitud-cita-formulario" onSubmit={solicitarCita}>
+          <label>Servicio<select name="servicio_id" value={servicioElegido} onChange={(e) => { setServicioElegido(e.target.value); setHorariosDisponibles([]); setCargandoHorarios(Boolean(e.target.value && fechaElegida)) }} required><option value="">Selecciona un servicio</option>{servicios.map((servicio) => <option key={servicio.id} value={servicio.id}>{servicio.nombre} · {servicio.duracion_minutos} min</option>)}</select></label>
+          <label>Fecha<input type="date" min={FECHA_HOY_BOGOTA} value={fechaElegida} onChange={(e) => { setFechaElegida(e.target.value); setHorariosDisponibles([]); setCargandoHorarios(Boolean(servicioElegido && e.target.value)) }} required /></label>
+          <label>Horario<select name="inicio" defaultValue="" disabled={cargandoHorarios || !horariosDisponibles.length} required><option value="">{cargandoHorarios ? 'Buscando horarios…' : 'Selecciona un horario'}</option>{horariosDisponibles.map((horario) => <option key={horario.inicio} value={horario.inicio}>{new Intl.DateTimeFormat('es-CO', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Bogota' }).format(new Date(horario.inicio))}</option>)}</select></label>
+          {!cargandoHorarios && servicioElegido && fechaElegida && horariosDisponibles.length === 0 && <p className="ayuda">No hay espacios disponibles para esa fecha. Prueba otra fecha o consulta con Bienestar.</p>}
+          <label>Motivo de consulta<textarea name="motivo" rows="4" minLength="5" maxLength="1000" placeholder="Cuéntanos brevemente qué tipo de acompañamiento necesitas." required /></label>
+          <button className="boton-principal" type="submit" disabled={enviando || !servicios.length || !horariosDisponibles.length}>{enviando ? 'Enviando solicitud…' : 'Solicitar cita'}</button>
+        </form>
+      </section>}
 
 {vista === 'resumen' && (
   <section className="panel-seccion">

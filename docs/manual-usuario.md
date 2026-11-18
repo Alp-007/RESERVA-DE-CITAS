@@ -10,12 +10,13 @@
 
 ### Configurar Supabase
 
-1. En Supabase, abre **SQL Editor** y ejecuta primero `supabase/migrations/202610110001_backend_citas.sql` y después `supabase/migrations/202610110002_requisitos_resumen_proyecto.sql`, en ese orden.
+1. En Supabase, abre **SQL Editor** y ejecuta las migraciones en este orden: `202610110001_backend_citas.sql`, `202610110002_requisitos_resumen_proyecto.sql`, `202611170001_seguridad_cuenta_admin.sql`, `202611170002_flujo_contrasena_admin.sql` y `202611170003_fotos_perfil.sql` (todas están en `supabase/migrations/`).
 2. En **Project Settings → API**, copia la URL del proyecto y la clave pública `anon`/`publishable`.
 3. Copia `.env.example` como `.env` en la raíz del proyecto y rellena `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`.
 4. `VITE_NEQUI_DESTINO` queda vacío hasta que el equipo confirme el número receptor. No inventes un número.
-5. En **Authentication → URL Configuration**, registra la URL de desarrollo `http://localhost:5173` y la URL de producción al desplegar.
-6. Nunca pegues `service_role`, claves privadas, contraseñas de base de datos ni datos reales de pago en `.env` del frontend o GitHub.
+5. En **Authentication → Sign In / Providers → Email**, desactiva **Confirm email** para crear cuentas sin mandar correos de verificación. Este ajuste afecta a todo el proyecto y Supabase dejará de comprobar que la persona controla la dirección usada.
+6. En **Authentication → URL Configuration**, registra la URL de desarrollo `http://localhost:5173` y la URL de producción al desplegar; esto permite que los enlaces de recuperación regresen al portal.
+7. Nunca pegues `service_role`, claves privadas, contraseñas de base de datos ni datos reales de pago en `.env` del frontend o GitHub.
 
 ### Ejecutar localmente en PowerShell
 
@@ -31,9 +32,9 @@ Para revisar la lógica local de lectura/formatos y archivos, ejecuta `npm.cmd t
 ## 2. Crear cuentas y asignar roles
 
 1. Usa **Crear cuenta** y completa los datos solicitados, acepta el tratamiento de datos y crea una contraseña de mínimo ocho caracteres.
-2. Si Supabase solicita confirmar el correo, usa el código o el enlace recibido para activar la cuenta.
+2. Puedes usar cualquier correo válido; el registro no exige dominio UNIMINUTO ni incluye una pantalla de códigos. Asegúrate de que **Confirm email** esté desactivado en Supabase.
 3. Toda cuenta inicia con rol `usuario`. La selección de tipo no concede permisos de profesional ni administrador.
-4. Para registrar estudiantes, usa el correo institucional. El precio de estudiante se habilita cuando Supabase confirma el correo institucional; esto no verifica la matrícula académica. La validación de matrícula requiere conexión autorizada con el sistema institucional.
+4. El registro no bloquea los correos personales. El tipo de usuario y el aporte correspondiente se guardan en el perfil; la condición de estudiante no concede permisos administrativos.
 5. Para el primer administrador, confirma su cuenta y ejecuta en SQL Editor, reemplazando el correo:
 
 ```sql
@@ -58,7 +59,7 @@ where u.id = p.id and u.email = 'admin@ejemplo.com';
 
 ## 4. Flujo profesional
 
-En **Agenda asignada**, la persona profesional ve solo citas asignadas a su perfil. Al terminar el horario puede marcarla como atendida; tras 15 minutos desde la hora de inicio puede registrar la inasistencia. La base impide cambiar el horario, el precio o los datos del paciente desde este rol.
+En **Agenda asignada**, la persona profesional ve solo citas asignadas a su perfil y los horarios que configuró administración. Al terminar el horario puede marcarla como atendida; tras 15 minutos desde la hora de inicio puede registrar la inasistencia. Los cambios de citas y disponibilidad se reflejan en los demás perfiles en tiempo real cuando Supabase Realtime está habilitado, y se actualizan automáticamente cada 30 segundos como respaldo. La base impide cambiar el precio o los datos privados del paciente desde este rol.
 
 ## 5. Flujo administrador
 

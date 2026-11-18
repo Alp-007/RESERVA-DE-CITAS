@@ -10,6 +10,3 @@ export const supabaseConfigurado = Boolean(
 export const supabase = supabaseConfigurado
   ? createClient(supabaseUrl, supabaseKey)
   : null
-console.log('URL cargada:', supabaseUrl)
-console.log('Clave detectada:', Boolean(supabaseKey))
-console.log('Supabase configurado:', supabaseConfigurado)

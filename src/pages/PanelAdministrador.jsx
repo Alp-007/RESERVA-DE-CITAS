@@ -32,6 +32,12 @@ export default function PanelAdministrador({ supabase, usuario }) {
 
   useEffect(() => {
     let activo = true
+    const channel = supabase.channel(`administrador-agenda-${usuario.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'citas' }, () => setRevision((value) => value + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'horarios_profesionales' }, () => setRevision((value) => value + 1))
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pagos' }, () => setRevision((value) => value + 1))
+      .subscribe()
+    const polling = window.setInterval(() => setRevision((value) => value + 1), 30000)
     Promise.all([
       supabase.from('perfiles').select('id,nombre_completo,tipo_usuario,rol,creado_en,tipo_documento,numero_documento,fecha_nacimiento,telefono,direccion,horario_preferido,documento_remision_path,estudiante_validado,activo,profesional_asignado_id').order('nombre_completo'),
       supabase.from('servicios').select('id,nombre,descripcion,duracion_minutos,precio_cop,activo').order('nombre'),
@@ -59,8 +65,8 @@ export default function PanelAdministrador({ supabase, usuario }) {
       setHistorialCitas(historialCitasR.data || [])
       setCargando(false)
     })
-    return () => { activo = false }
-  }, [supabase, revision])
+    return () => { activo = false; window.clearInterval(polling); supabase.removeChannel(channel) }
+  }, [supabase, revision, usuario.id])
 
   function recargar() {
     setCargando(true)

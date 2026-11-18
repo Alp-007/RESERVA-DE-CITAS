@@ -19,10 +19,10 @@ Consulta [los pendientes para publicar](docs/pendientes-lanzamiento.md) antes de
 
 - Página pública responsive con servicios.
 - Asistente informativo local con respuestas rápidas sobre registro, citas y pagos; no envía conversaciones a terceros ni sustituye atención profesional.
-- Registro e inicio/cierre de sesión con correo y contraseña.
+- Registro e inicio/cierre de sesión con cualquier correo válido y contraseña; el alta no pide dominio institucional ni código OTP. Para no enviar verificación por correo, desactiva `Confirm email` en el proveedor Email de Supabase.
 - Perfiles con roles `usuario`, `profesional`, `administrador`; rol inicial y elevación protegidos en base.
 - Paneles diferenciados: solicitud/cancelación y seguimiento de citas; agenda profesional asignada; administración de perfiles, precios, agenda y pagos.
-- Datos ampliados del registro, verificación institucional por correo confirmado, consentimiento, perfil editable y recuperación de contraseña.
+- Datos ampliados del registro, consentimiento, perfil editable y recuperación de contraseña. El rol inicial y la elegibilidad para aportes se determinan en la base de datos, no por el dominio elegido en el formulario.
 - Regla de 24 horas para cancelar/reprogramar, espera de 8 días tras inasistencia, bonos por cancelación administrativa y solicitudes de cambio de profesional.
 - Notificaciones dentro de la aplicación, auditoría de citas y pagos, horarios profesionales, tarifas de $5.000 COP y $12.000 COP configurables.
 - API REST Supabase desde el SDK; políticas RLS en todas las tablas y reglas de negocio en PostgreSQL.
@@ -33,6 +33,7 @@ Consulta [los pendientes para publicar](docs/pendientes-lanzamiento.md) antes de
 
 - `supabase/migrations/202610110001_backend_citas.sql`: tablas, relaciones, triggers, RLS, funciones y Storage privado.
 - `supabase/migrations/202610110002_requisitos_resumen_proyecto.sql`: campos y reglas ampliadas del documento del proyecto. Debe ejecutarse después de la migración 001.
+- `supabase/migrations/202611170001_seguridad_cuenta_admin.sql`, `202611170002_flujo_contrasena_admin.sql` y `202611170003_fotos_perfil.sql`: seguridad del perfil administrador y almacenamiento de fotos.
 - `supabase/seed.sql`: servicio de demostración y ejemplo de datos para desarrollo.
 - `supabase/consultas.sql`: consultas de control y ejemplos de administración.
 - `src/supabase.js`: cliente; permanece desactivado si faltan las variables para que la vista pública no quede en blanco.
@@ -88,3 +89,9 @@ docs/
 ## Entrega y validación
 
 Casos funcionales y de seguridad en `docs/plan-pruebas.md`. Deben ejecutarse contra Supabase con cuentas de desarrollo y completarse las evidencias. No aprobar transacciones reales desde este sistema sin validarlas manualmente en Nequi.
+
+## Materiales institucionales y consentimientos
+
+Se incorporó el logotipo CAPBE-RGH enviado y se incluyeron los formularios PDF de consentimiento informado para adultos y NNA, además de los asentimientos para adolescentes y niños. Están disponibles desde el registro y se orientan según la edad indicada. La autorización de tratamiento de datos del registro es independiente de esos consentimientos clínicos.
+
+El ZIP recibido no contiene una carta de autorización para publicar la página; contiene el logotipo y los cuatro formularios de atención psicológica.
