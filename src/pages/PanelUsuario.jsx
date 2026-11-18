@@ -52,16 +52,44 @@ export default function PanelUsuario({ supabase, usuario, perfil, vista = 'mis-c
   }, [supabase, usuario.id, revision, perfil.tipo_usuario, perfil.estudiante_validado])
 
   useEffect(() => {
-    if (vista !== 'solicitar-cita' || !servicioElegido || !fechaElegida) return undefined
-    let activo = true
-    supabase.rpc('obtener_horarios_disponibles', { servicio: servicioElegido, fecha: fechaElegida })
-      .then(({ data, error: horariosError }) => {
-        if (!activo) return
-        if (horariosError) setError(horariosError.message)
-        else setHorariosDisponibles(data || [])
-      }).finally(() => { if (activo) setCargandoHorarios(false) })
-    return () => { activo = false }
-  }, [supabase, usuario.id, vista, servicioElegido, fechaElegida])
+  if (vista !== 'solicitar-cita' || !servicioElegido || !fechaElegida) return undefined
+
+  let activo = true
+  setCargandoHorarios(true)
+supabase
+  .from('perfiles')
+  .select('profesional_asignado_id')
+  .eq('id', usuario.id)
+  .single()
+  .then(({ data, error }) => {
+    console.log('Profesional asignado:', data)
+    console.log('Error al consultar asignación:', error)
+  })
+  supabase.rpc('obtener_horarios_disponibles', {
+    servicio: servicioElegido,
+    fecha: fechaElegida,
+  }).then(({ data, error: horariosError }) => {
+    if (!activo) return
+
+    console.log('Fecha seleccionada:', fechaElegida)
+    console.log('Servicio seleccionado:', servicioElegido)
+    console.log('Horarios recibidos:', data)
+    console.log('Error de Supabase:', horariosError)
+
+    if (horariosError) {
+      setError(horariosError.message)
+      setHorariosDisponibles([])
+    } else {
+      setHorariosDisponibles(data || [])
+    }
+  }).finally(() => {
+    if (activo) setCargandoHorarios(false)
+  })
+
+  return () => {
+    activo = false
+  }
+}, [supabase, usuario.id, vista, servicioElegido, fechaElegida])
 
   async function cargarHorariosCambio(cita, fecha) {
     setFechaCambio((actual) => ({ ...actual, [cita.id]: fecha }))
@@ -187,38 +215,67 @@ export default function PanelUsuario({ supabase, usuario, perfil, vista = 'mis-c
   }
 
   return (
-    <main className="panel-contenedor">
-      <div className="panel-titulo">
-        <div><span className="etiqueta">ESPACIO PERSONAL</span><h1>{vista === 'solicitar-cita' ? 'Solicitar una cita' : 'Mis citas'}</h1><p>{vista === 'solicitar-cita' ? 'Cuéntanos qué atención necesitas y elige un horario.' : 'Consulta el estado de tus solicitudes, citas y pagos.'}</p></div>
-        <button className="boton-secundario" onClick={() => { setCargando(true); setError(''); setRevision((value) => value + 1) }} disabled={cargando}>Actualizar</button>
+  <main className="panel-contenedor">
+    <div className="panel-titulo">
+      <div>
+        <span className="etiqueta">ESPACIO PERSONAL</span>
+
+        <h1>
+          {vista === 'solicitar-cita'
+            ? 'Solicitar una cita'
+            : vista === 'resumen'
+              ? 'Mi resumen'
+              : 'Mis citas'}
+        </h1>
+
+        <p>
+          {vista === 'solicitar-cita'
+            ? 'Cuéntanos qué atención necesitas y elige un horario.'
+            : vista === 'resumen'
+              ? 'Consulta tu actividad, tus próximas citas y tu aporte.'
+              : 'Consulta el estado de tus solicitudes, citas y pagos.'}
+        </p>
       </div>
+
+      <button
+        className="boton-secundario"
+        onClick={() => {
+          setCargando(true)
+          setError('')
+          setRevision((value) => value + 1)
+        }}
+        disabled={cargando}
+      >
+        Actualizar
+      </button>
+    </div>
       {mensaje && <p className="alerta alerta-exito" role="status">{mensaje}</p>}
       {error && <p className="alerta alerta-error" role="alert">{error}</p>}
+      {vista === 'perfil' && <section className="panel-seccion">
+  <h2>Información de mi cuenta</h2>
 
-      {vista === 'solicitar-cita' && <section className="panel-tarjeta">
-        <h2>Solicitar una cita</h2>
-        {aporte !== null && <p className="monto-aporte">Aporte para tu cuenta: <strong>{formatoCOP(aporte)}</strong>{perfil.tipo_usuario === 'estudiante' && !perfil.estudiante_validado && <small> · Se aplica el valor de usuario externo hasta verificar el correo institucional.</small>}</p>}
-        <form className="formulario-cita" onSubmit={solicitarCita}>
-          <label>Servicio
-            <select name="servicio_id" required value={servicioElegido} onChange={(e) => { setServicioElegido(e.target.value); setHorariosDisponibles([]); setCargandoHorarios(Boolean(fechaElegida && e.target.value)) }}>
-              <option value="" disabled>Selecciona un servicio</option>
-              {servicios.map((servicio) => <option key={servicio.id} value={servicio.id}>{servicio.nombre} · {servicio.duracion_minutos} min</option>)}
-            </select>
-          </label>
-          <label>Fecha <input type="date" name="fecha" min={FECHA_HOY_BOGOTA} value={fechaElegida} onChange={(e) => { setFechaElegida(e.target.value); setHorariosDisponibles([]); setCargandoHorarios(Boolean(servicioElegido && e.target.value)) }} required /></label>
-          <label className="campo-ancho">Horario disponible
-            <select name="inicio" required defaultValue="" disabled={!fechaElegida || !servicioElegido || cargandoHorarios || !horariosDisponibles.length}>
-              <option value="" disabled>{!fechaElegida || !servicioElegido ? 'Selecciona servicio y fecha' : cargandoHorarios ? 'Buscando horarios…' : horariosDisponibles.length ? 'Selecciona un horario' : 'No hay horarios disponibles'}</option>
-              {horariosDisponibles.map((h) => <option key={h.inicio} value={h.inicio}>{new Intl.DateTimeFormat('es-CO', { hour: 'numeric', minute: '2-digit', timeZone: 'America/Bogota' }).format(new Date(h.inicio))}</option>)}
-            </select>
-          </label>
-          <label className="campo-ancho">Motivo de consulta
-            <textarea name="motivo" minLength={5} maxLength={1000} rows={3} placeholder="Cuéntanos brevemente qué tipo de acompañamiento buscas" required />
-          </label>
-          <p className="ayuda campo-ancho">Solo aparecen horarios libres de tu profesional asignado. Si no ves horarios, solicita al administrador que te asigne un profesional o configure su agenda. Las citas son de lunes a sábado, de 8:00 a. m. a 6:00 p. m. (hora de Bogotá).</p>
-          <button className="boton-principal" type="submit" disabled={enviando || !servicios.length || !horariosDisponibles.length}>{enviando ? 'Enviando…' : 'Solicitar cita'}</button>
-        </form>
-      </section>}
+  <div className="lista-tarjetas">
+    <article className="panel-tarjeta">
+      <span className="etiqueta">NOMBRE COMPLETO</span>
+      <h3>{perfil?.nombre_completo || usuario?.user_metadata?.nombre_completo || 'No registrado'}</h3>
+    </article>
+
+    <article className="panel-tarjeta">
+      <span className="etiqueta">CORREO ELECTRÓNICO</span>
+      <h3>{usuario?.email || 'No registrado'}</h3>
+    </article>
+
+    <article className="panel-tarjeta">
+      <span className="etiqueta">TIPO DE USUARIO</span>
+      <h3>{perfil?.tipo_usuario || 'No registrado'}</h3>
+    </article>
+
+    <article className="panel-tarjeta">
+      <span className="etiqueta">ESTADO DE LA CUENTA</span>
+      <h3>{perfil?.activo === false ? 'Inactiva' : 'Activa'}</h3>
+    </article>
+  </div>
+</section>}
 
       {vista === 'mis-citas' && <section className="panel-seccion">
         <h2>Solicitudes y citas</h2>
