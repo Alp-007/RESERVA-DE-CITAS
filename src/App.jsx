@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import './App.css'
 import { supabase } from './supabase'
-import Registro from './components/Registro'
-import PanelUsuario from './pages/PanelUsuario'
-import PanelProfesional from './pages/PanelProfesional'
-import PanelAdministrador from './pages/PanelAdministrador'
 
 const slots = [
   ['MAR-09', 'Martes 14 de octubre', '9:00 a. m.'],
@@ -39,157 +35,14 @@ function App() {
   const [bookingStep, setBookingStep] = useState('schedule')
   const [profileType, setProfileType] = useState('student')
   const [reference, setReference] = useState('')
-  const [usuario, setUsuario] = useState(null)
-const [perfil, setPerfil] = useState(null)
-const [vistaUsuario, setVistaUsuario] = useState('mis-citas')
-  const [pantalla, setPantalla] = useState('inicio')
-  const [cargando, setCargando] = useState(false)
-const [mensaje, setMensaje] = useState('')
-const [tipoMensaje, setTipoMensaje] = useState('')
-
-  const [conexion, setConexion] = useState('Comprobando conexión...')
-
-async function iniciarSesion(evento) {
-  evento.preventDefault()
-  setCargando(true)
-  setMensaje('')
-  setTipoMensaje('')
-
-  try {
-    if (!supabase) {
-      throw new Error('No hay conexión con Supabase.')
-    }
-
-    const correo = evento.currentTarget.elements.correo.value.trim()
-    const contrasena = evento.currentTarget.elements.contrasena.value
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: correo,
-      password: contrasena,
-    })
-
-    if (error) {
-      throw new Error(
-        error.message === 'Invalid login credentials'
-          ? 'Correo o contraseña incorrectos. Verifica también que hayas confirmado tu correo.'
-          : error.message
-      )
-    }
-
-    const { data: perfilEncontrado, error: errorPerfil } = await supabase
-      .from('perfiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .single()
-
-    if (errorPerfil || !perfilEncontrado) {
-      await supabase.auth.signOut()
-      throw new Error('No se encontró el perfil de esta cuenta.')
-    }
-
-    if (perfilEncontrado.activo === false) {
-      await supabase.auth.signOut()
-      throw new Error('Esta cuenta está desactivada. Contacta al administrador.')
-    }
-
-    if (!['usuario', 'profesional', 'administrador'].includes(perfilEncontrado.rol)) {
-      await supabase.auth.signOut()
-      throw new Error('Esta cuenta no tiene un rol válido asignado.')
-    }
-
-    setUsuario(data.user)
-    setPerfil(perfilEncontrado)
-    setPantalla(perfilEncontrado.rol)
-
-  } catch (error) {
-    setMensaje(error.message || 'No se pudo iniciar sesión.')
-    setTipoMensaje('error')
-  } finally {
-    setCargando(false)
-  }
-}
 
   useEffect(() => {
-  let mounted = true
-
-  async function recuperarSesion() {
-    if (!supabase) {
-      setConnection('Modo local · sin sesión activa')
-      return
-    }
-
-    try {
-      const { data, error } = await supabase.auth.getSession()
-
-      if (error) throw error
-      if (!mounted) return
-
-      const user = data.session?.user
-
-      if (!user) {
-        setConnection('Portal seguro de Bienestar Universitario')
-        return
-      }
-
-      const { data: perfilEncontrado, error: errorPerfil } = await supabase
-        .from('perfiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
-      if (!mounted) return
-
-      if (errorPerfil || !perfilEncontrado || perfilEncontrado.activo === false) {
-        await supabase.auth.signOut()
-        setSession(null)
-        setScreen('home')
-        setConnection('No se pudo recuperar la sesión')
-        return
-      }
-
-      const roles = {
-        usuario: 'user',
-        profesional: 'professional',
-        administrador: 'admin',
-      }
-
-      const nextRole = roles[perfilEncontrado.rol]
-
-      if (!nextRole) {
-        await supabase.auth.signOut()
-        setSession(null)
-        setScreen('home')
-        setConnection('No se pudo recuperar la sesión')
-        return
-      }
-
-      const nombre = perfilEncontrado.nombre_completo
-        || user.user_metadata?.nombre_completo
-        || user.email
-
-      setSession({
-        name: nombre,
-        role: nextRole,
-        user,
-        perfil: perfilEncontrado,
-      })
-
-      setScreen('portal')
-      setConnection('Portal seguro de Bienestar Universitario')
-
-    } catch (error) {
-      if (mounted) {
-        setConnection('Modo local · sin sesión activa')
-      }
-    }
-  }
-
-  recuperarSesion()
-
-  return () => {
-    mounted = false
-  }
-}, [])
+    let mounted = true
+    supabase.auth.getSession().then(({ error }) => {
+      if (mounted) setConnection(error ? 'Modo local · sin sesión activa' : 'Portal seguro de Bienestar Universitario')
+    }).catch(() => mounted && setConnection('Modo local · sin sesión activa'))
+    return () => { mounted = false }
+  }, [])
 
   const role = session?.role || 'user'
   const contribution = profileType === 'student' ? 5000 : 12000
@@ -202,89 +55,24 @@ async function iniciarSesion(evento) {
     setScreen('portal')
     setNotice(null)
   }
-  const openSection = (nextTab) => {
-  setTab(nextTab)
-  setNotice(null)
 
-  if (session?.user) {
-    setScreen('portal')
-  } else {
-    setScreen('login')
+  async function handleLogin(event) {
+    event.preventDefault()
+    const form = event.currentTarget
+    setLoading(true)
+    setNotice(null)
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email: form.email.value.trim(), password: form.password.value })
+      if (error) throw error
+      const metadata = data.user?.user_metadata || {}
+      const nextRole = metadata.rol === 'administrador' ? 'admin' : metadata.rol === 'profesional' ? 'professional' : 'user'
+      setSession({ name: metadata.nombre_completo || data.user.email?.split('@')[0] || 'Usuario', role: nextRole })
+      setTab('summary')
+      setScreen('portal')
+    } catch (error) {
+      setNotice({ tone: 'warning', text: error.message || 'No fue posible iniciar sesión. Verifica tus datos.' })
+    } finally { setLoading(false) }
   }
-}
-
-  
-async function handleLogin(event) {
-  event.preventDefault()
-  const form = event.currentTarget
-  setLoading(true)
-  setNotice(null)
-
-  try {
-    if (!supabase) {
-      throw new Error('No hay conexión con Supabase.')
-    }
-
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: form.email.value.trim(),
-      password: form.password.value,
-    })
-
-    if (error) throw error
-
-    const { data: perfilEncontrado, error: errorPerfil } = await supabase
-      .from('perfiles')
-      .select('*')
-      .eq('id', data.user.id)
-      .single()
-
-    if (errorPerfil || !perfilEncontrado) {
-      await supabase.auth.signOut()
-      throw new Error('No se encontró el perfil de esta cuenta.')
-    }
-
-    if (perfilEncontrado.activo === false) {
-      await supabase.auth.signOut()
-      throw new Error('Esta cuenta está desactivada. Contacta al administrador.')
-    }
-
-    const roles = {
-      usuario: 'user',
-      profesional: 'professional',
-      administrador: 'admin',
-    }
-
-    const nextRole = roles[perfilEncontrado.rol]
-
-    if (!nextRole) {
-      await supabase.auth.signOut()
-      throw new Error('Esta cuenta no tiene un rol válido asignado.')
-    }
-
-    const nombre = perfilEncontrado.nombre_completo
-      || data.user.user_metadata?.nombre_completo
-      || data.user.email
-
-    setSession({
-      name: nombre,
-      role: nextRole,
-      user: data.user,
-      perfil: perfilEncontrado,
-    })
-
-    setTab('summary')
-    setScreen('portal')
-
-  } catch (error) {
-    setNotice({
-      tone: 'warning',
-      text: error.message || 'No fue posible iniciar sesión.',
-    })
-  } finally {
-    setLoading(false)
-  }
-}
-
 
   async function handleRegister(event) {
     event.preventDefault()
@@ -345,41 +133,10 @@ async function handleLogin(event) {
 
   return <div className="app">
     <div className="utility"><span className="online-dot" />{connection}<span>Atención psicológica · Soacha</span></div>
-    {screen === 'home' && <><Header goHome={() => setScreen('home')} openLogin={() => { setNotice(null); setScreen('login') }} openRegister={() => { setNotice(null); setScreen('register') }} /><Home
-  openLogin={() => setScreen('login')}
-  openRegister={() => setScreen('register')}
-  demo={() => enterDemo('user')}
-  openSection={openSection}
-/>
-</>}
+    {screen === 'home' && <><Header goHome={() => setScreen('home')} openLogin={() => { setNotice(null); setScreen('login') }} openRegister={() => { setNotice(null); setScreen('register') }} /><Home openLogin={() => setScreen('login')} openRegister={() => setScreen('register')} demo={() => enterDemo('user')} /></>}
     {screen === 'login' && <Login submit={handleLogin} notice={notice} loading={loading} home={() => setScreen('home')} register={() => { setNotice(null); setScreen('register') }} demo={enterDemo} />}
     {screen === 'register' && <Register submit={handleRegister} notice={notice} loading={loading} home={() => setScreen('home')} login={() => { setNotice(null); setScreen('login') }} />}
-    {screen === 'portal' && <Portal
-  role={role}
-  session={session}
-  tab={tab}
-  setTab={setTab}
-  logout={logout}
-  notice={notice}
-  clearNotice={() => setNotice(null)}
-  goHome={() => setScreen('home')}
-  appointments={appointments}
-  professionals={professionals}
-  contribution={contribution}
-  profileType={profileType}
-  setProfileType={setProfileType}
-  slot={slot}
-  setSlot={setSlot}
-  bookingStep={bookingStep}
-  setBookingStep={setBookingStep}
-  reference={reference}
-  setReference={setReference}
-  reportPayment={reportPayment}
-  approvePayment={approvePayment}
-  setAppointmentStatus={setAppointmentStatus}
-  addProfessional={addProfessional}
-  approvedTotal={approvedTotal}
-/>}
+    {screen === 'portal' && <Portal role={role} session={session} tab={tab} setTab={setTab} logout={logout} notice={notice} clearNotice={() => setNotice(null)} appointments={appointments} professionals={professionals} contribution={contribution} profileType={profileType} setProfileType={setProfileType} slot={slot} setSlot={setSlot} bookingStep={bookingStep} setBookingStep={setBookingStep} reference={reference} setReference={setReference} reportPayment={reportPayment} approvePayment={approvePayment} setAppointmentStatus={setAppointmentStatus} addProfessional={addProfessional} approvedTotal={approvedTotal} />}
     <ChatAssistant />
   </div>
 }
@@ -419,15 +176,11 @@ function Header({ goHome, openLogin, openRegister }) {
   return <header className="header"><button className="brand-button" type="button" onClick={goHome}><Brand /></button><nav><button type="button" onClick={goHome}>Inicio</button><a href="#servicios">Servicios</a><a href="#proceso">Cómo funciona</a></nav><div><button className="plain" type="button" onClick={openRegister}>Crear cuenta</button><Button className="dark" type="button" onClick={openLogin}>Ingresar <Icon>→</Icon></Button></div></header>
 }
 
-function Home({ openLogin, openRegister, demo, openSection }) {
+function Home({ openLogin, openRegister, demo }) {
   return <main>
     <section className="hero"><div className="hero-copy"><p className="eyebrow">BIENESTAR UNIVERSITARIO</p><h1>Tu bienestar merece un espacio para <em>ser escuchado.</em></h1><p>Agenda, consulta y gestiona tu atención psicológica en un portal claro, privado y pensado para ti.</p><div className="hero-actions"><Button className="orange" type="button" onClick={openLogin}>Solicitar una cita <Icon>→</Icon></Button><Button className="ghost" type="button" onClick={demo}>Conocer el portal</Button></div><div className="trust"><span>⌾ Información con acceso por roles</span><span>◷ Agenda organizada</span></div></div><HeroArt /></section>
     <section className="strip"><span>Atención para estudiantes, docentes, administrativos y comunidad externa.</span><button type="button" onClick={openRegister}>Regístrate para comenzar <Icon>→</Icon></button></section>
-    <section className="section" id="servicios"><div className="section-intro"><p className="eyebrow">EL PORTAL</p><h2>Todo lo necesario para organizar tu atención.</h2><p>Una experiencia simple para pedir acompañamiento y una gestión ordenada para el equipo institucional.</p></div><div className="features">
-  <Feature number="01" icon="▣" title="Agenda disponible" text="Consulta los espacios habilitados por tu profesional asignado y solicita la fecha que te funciona." onClick={() => openSection('book')} />
-  <Feature number="02" icon="◈" title="Aporte claro" text="Revisa el valor correspondiente, paga con Bre-B y reporta el número de aprobación." onClick={() => openSection('book')} />
-  <Feature number="03" icon="◌" title="Seguimiento oportuno" text="Consulta el estado de la solicitud, tus citas y los avisos relevantes desde un solo lugar." onClick={() => openSection('history')} />
-</div></section>
+    <section className="section" id="servicios"><div className="section-intro"><p className="eyebrow">EL PORTAL</p><h2>Todo lo necesario para organizar tu atención.</h2><p>Una experiencia simple para pedir acompañamiento y una gestión ordenada para el equipo institucional.</p></div><div className="features"><Feature number="01" icon="▣" title="Agenda disponible" text="Consulta los espacios habilitados por tu profesional asignado y solicita la fecha que te funciona." /><Feature number="02" icon="◈" title="Aporte claro" text="Revisa el valor correspondiente, paga con Bre-B y reporta el número de aprobación." /><Feature number="03" icon="◌" title="Seguimiento oportuno" text="Consulta el estado de la solicitud, tus citas y los avisos relevantes desde un solo lugar." /></div></section>
     <section className="process" id="proceso"><div><p className="eyebrow">UN PROCESO SENCILLO</p><h2>Solicita tu atención en tres pasos.</h2></div><ol><li><b>1</b><span><strong>Ingresa a tu cuenta</strong><small>Registra y confirma tu correo.</small></span></li><li><b>2</b><span><strong>Elige un horario</strong><small>Visualiza los espacios disponibles.</small></span></li><li><b>3</b><span><strong>Reporta tu aporte</strong><small>Escanea el QR Bre-B y registra la aprobación.</small></span></li></ol></section>
     <section className="cta"><div><p className="eyebrow">EMPIEZA HOY</p><h2>Tu salud mental también es prioridad.</h2><p>Accede a un espacio de escucha, orientación y acompañamiento.</p></div><Button className="orange" type="button" onClick={openLogin}>Ingresar al portal <Icon>→</Icon></Button></section>
     <Footer />
@@ -435,34 +188,12 @@ function Home({ openLogin, openRegister, demo, openSection }) {
 }
 
 function HeroArt() { return <div className="hero-art" aria-label="Ilustración de acompañamiento psicológico"><i className="sun" /><i className="shape-one" /><i className="shape-two" /><div className="hero-card"><span className="heart">♡</span><small>Tu cita, a tu ritmo</small><b>Atención con acompañamiento</b><div><i /><i /><i /></div></div><div className="appointment-bubble"><span>VR</span><p><b>Ps. Valentina</b><small>Próxima disponibilidad</small></p><em>✓</em></div></div> }
-function Feature({ number, icon, title, text, onClick }) {
-  return (
-    <button
-      className="feature"
-      type="button"
-      onClick={onClick}
-      style={{
-        textAlign: 'left',
-        width: '100%',
-        color: 'inherit',
-        font: 'inherit',
-        cursor: 'pointer'
-      }}
-    >
-      <span className="feature-number">{number}</span>
-      <i>{icon}</i>
-      <h3>{title}</h3>
-      <p>{text}</p>
-    </button>
-  )
-}
+function Feature({ number, icon, title, text }) { return <article className="feature"><span className="feature-number">{number}</span><i>{icon}</i><h3>{title}</h3><p>{text}</p></article> }
 function Footer() { return <footer><Brand /><p>Portal académico de Bienestar Universitario · Sistema de gestión de citas psicológicas</p><small>UNIMINUTO · Centro Universitario Regional Soacha</small></footer> }
 
-
-function Login({ submit, notice, loading, home, register }) {
-  return <main className="auth-page"><aside><Brand /><div><p className="eyebrow">PORTAL DE BIENESTAR</p><h1>Un lugar seguro para empezar.</h1><p>Accede a tus citas, notificaciones y solicitudes de atención desde un único lugar.</p></div><ul><li>⌾ Tus datos se muestran según el rol autorizado.</li><li>♡ Atención organizada y centrada en las personas.</li></ul></aside><section><button className="back" type="button" onClick={home}>← Volver al inicio</button><form className="login-form" onSubmit={submit}><p className="eyebrow">INICIAR SESIÓN</p><h2>Te damos la bienvenida.</h2><p>Ingresa con el correo y contraseña registrados.</p><Alert notice={notice} /><label>Correo electrónico<input name="email" type="email" autoComplete="email" placeholder="nombre@uniminuto.edu.co" required /></label><label>Contraseña<input name="password" type="password" autoComplete="current-password" placeholder="Escribe tu contraseña" required /></label><Button className="dark full" type="submit" disabled={loading}>{loading ? 'Ingresando...' : 'Ingresar al portal'} <Icon>→</Icon></Button><div className="switch">¿Aún no tienes una cuenta? <button type="button" onClick={register}>Regístrate</button></div></form></section></main>
+function Login({ submit, notice, loading, home, register, demo }) {
+  return <main className="auth-page"><aside><Brand /><div><p className="eyebrow">PORTAL DE BIENESTAR</p><h1>Un lugar seguro para empezar.</h1><p>Accede a tus citas, notificaciones y solicitudes de atención desde un único lugar.</p></div><ul><li>⌾ Tus datos se muestran según el rol autorizado.</li><li>♡ Atención organizada y centrada en las personas.</li></ul></aside><section><button className="back" type="button" onClick={home}>← Volver al inicio</button><form className="login-form" onSubmit={submit}><p className="eyebrow">INICIAR SESIÓN</p><h2>Te damos la bienvenida.</h2><p>Ingresa con el correo y contraseña registrados.</p><Alert notice={notice} /><label>Correo electrónico<input name="email" type="email" autoComplete="email" placeholder="nombre@uniminuto.edu.co" required /></label><label>Contraseña<input name="password" type="password" autoComplete="current-password" placeholder="Escribe tu contraseña" required /></label><Button className="dark full" type="submit" disabled={loading}>{loading ? 'Ingresando...' : 'Ingresar al portal'} <Icon>→</Icon></Button><div className="switch">¿Aún no tienes una cuenta? <button type="button" onClick={register}>Regístrate</button></div></form><div className="demo"><b>Vista de demostración</b><p>Explora los perfiles sin crear ni modificar datos reales.</p><div><button type="button" onClick={() => demo('user')}>Usuario</button><button type="button" onClick={() => demo('professional')}>Profesional</button><button type="button" onClick={() => demo('admin')}>Administrador</button></div></div></section></main>
 }
-
 
 function Register({ submit, notice, loading, home, login }) {
   const [birth, setBirth] = useState('')
@@ -472,33 +203,9 @@ function Register({ submit, notice, loading, home, login }) {
 function Field({ label, required, wide, children }) { return <label className={`field ${wide ? 'wide' : ''}`}><span>{label}{required && <b> *</b>}</span>{children}</label> }
 
 function Portal(props) {
- const { role, session, tab, setTab, logout, notice, clearNotice, goHome } = props
+  const { role, session, tab, setTab, logout, notice, clearNotice } = props
   const nav = role === 'admin' ? [['summary', 'Resumen', '▦'], ['professionals', 'Profesionales', '◉'], ['appointments', 'Citas', '▣'], ['payments', 'Aportes', '◇'], ['reports', 'Reportes', '▤']] : role === 'professional' ? [['summary', 'Mi agenda', '▣'], ['activity', 'Actualizar atención', '✓'], ['availability', 'Disponibilidad', '◷']] : [['summary', 'Mi resumen', '▦'], ['book', 'Agendar cita', '▣'], ['history', 'Mis citas', '◷'], ['profile', 'Mi perfil', '◉']]
-  return <main className="portal"><aside className="sidebar"><button
-  type="button"
-  onClick={goHome}
-  aria-label="Volver al inicio"
-  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
->
-  <Brand short />
-</button><p>{role === 'admin' ? 'ADMINISTRADOR' : role === 'professional' ? 'PROFESIONAL' : 'USUARIO'}</p><nav>{nav.map(([id, label, icon]) => <button key={id} className={tab === id ? 'active' : ''} type="button" onClick={() => { setTab(id); clearNotice() }}><i>{icon}</i><span>{label}</span></button>)}</nav><div className="account"><span>{session?.name?.split(' ').map((part) => part[0]).join('').slice(0, 2)}</span><p><b>{session?.name}</b><small>{role === 'admin' ? 'Administrador' : role === 'professional' ? 'Profesional' : 'Usuario'}</small></p></div><button className="logout" type="button" onClick={logout}>↪ <span>Cerrar sesión</span></button></aside><section className="portal-main"><header className="portal-header"><div><p>Portal de Bienestar / {role === 'admin' ? 'Administrador' : role === 'professional' ? 'Profesional' : 'Usuario'}</p><h1>{role === 'user' && tab === 'summary'
-  ? `Hola, ${session?.name?.split(' ')[0] || 'Usuario'}`
-  : titleFor(role, tab)}</h1></div><div><button className="bell" type="button">♧<i /></button><span>Octubre 2026</span></div></header><Alert notice={notice} />{role === 'user' && (
- <PanelUsuario
-  supabase={supabase}
-  usuario={session?.user}
-  perfil={session?.perfil}
-  vista={
-  tab === 'book'
-    ? 'solicitar-cita'
-    : tab === 'summary'
-      ? 'resumen'
-      : tab === 'profile'
-        ? 'perfil'
-        : 'mis-citas'
-}
-/>
-)}{role === 'professional' && <ProfessionalDashboard {...props} />}{role === 'admin' && <AdminDashboard {...props} />}</section></main>
+  return <main className="portal"><aside className="sidebar"><Brand short /><p>{role === 'admin' ? 'ADMINISTRADOR' : role === 'professional' ? 'PROFESIONAL' : 'USUARIO'}</p><nav>{nav.map(([id, label, icon]) => <button key={id} className={tab === id ? 'active' : ''} type="button" onClick={() => { setTab(id); clearNotice() }}><i>{icon}</i><span>{label}</span></button>)}</nav><div className="account"><span>{session?.name?.split(' ').map((part) => part[0]).join('').slice(0, 2)}</span><p><b>{session?.name}</b><small>{role === 'admin' ? 'Administrador' : role === 'professional' ? 'Profesional' : 'Usuario'}</small></p></div><button className="logout" type="button" onClick={logout}>↪ <span>Cerrar sesión</span></button></aside><section className="portal-main"><header className="portal-header"><div><p>Portal de Bienestar / {role === 'admin' ? 'Administrador' : role === 'professional' ? 'Profesional' : 'Usuario'}</p><h1>{titleFor(role, tab)}</h1></div><div><button className="bell" type="button">♧<i /></button><span>Octubre 2026</span></div></header><Alert notice={notice} />{role === 'user' && <UserDashboard {...props} />}{role === 'professional' && <ProfessionalDashboard {...props} />}{role === 'admin' && <AdminDashboard {...props} />}</section></main>
 }
 function titleFor(role, tab) { return ({ user: { summary: 'Hola, Camila', book: 'Agenda tu cita', history: 'Mis citas', profile: 'Mi perfil' }, professional: { summary: 'Mi agenda de hoy', activity: 'Actualizar atención', availability: 'Disponibilidad' }, admin: { summary: 'Resumen general', professionals: 'Profesionales', appointments: 'Gestión de citas', payments: 'Gestión de aportes', reports: 'Reportes y seguimiento' } })[role][tab] }
 
